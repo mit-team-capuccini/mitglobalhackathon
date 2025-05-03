@@ -6,7 +6,6 @@ import {
   Card,
   Stack,
   Text,
-  List,
   Title,
   ThemeIcon,
   Skeleton,
@@ -17,30 +16,26 @@ import {
   Paper,
   SimpleGrid,
   ScrollArea,
-  Button,
+  Button as MantineButton,
   Center,
-  Loader
+  Loader,
+  Modal,
+  TextInput
 } from '@mantine/core';
 import { LineChart, DonutChart, BarChart } from '@mantine/charts';
 import {
-  IconCircleCheck,
   IconMapPin,
   IconUsers,
-  IconRulerMeasure,
   IconBuildingBridge,
-  IconRoad,
-  IconDroplet,
-  IconInfoCircle,
-  IconChartBar,
   IconUsersGroup,
   IconAlertTriangle,
-  IconArticle,
   IconChartLine,
   IconChartDonut,
   IconRoadOff,
   IconDownload
 } from '@tabler/icons-react';
 import ReactMarkdown from 'react-markdown';
+import { useDisclosure } from '@mantine/hooks';
 
 // Import the new components
 import { GoogleMapCard } from './GoogleMapCard';
@@ -54,6 +49,40 @@ import {
 
 // Import types used in GoogleMapCard (now needed here)
 import type { InfrastructurePlace, RoadClosure, ReservoirLevel } from './GoogleMapCard';
+
+// Import Social Media Post Type (same as in View3)
+interface SocialMediaPost {
+  _id: string;
+  post_id: string;
+  platform: string;
+  user: {
+    user_id: string;
+    username: string;
+  };
+  timestamp: string | null; // Can be null due to API error handling
+  location?: {
+    latitude?: number;
+    longitude?: number;
+  };
+  media?: {
+    image_url?: string;
+    video_url?: string;
+  };
+  content: {
+    text: string;
+    hashtags?: string[];
+    tags?: string[];
+  };
+  evaluation?: {
+    severity?: string;
+    estimated_damage?: string;
+  };
+  analytics?: {
+    sentiment_score?: number;
+    verified?: boolean;
+    priority?: number;
+  };
+}
 
 // Placeholder types - adjust if you have proper types
 type GeoJsonFeature = any;
@@ -97,15 +126,16 @@ const mockAlertsTrendData = [
 export function View1() {
   // --- Layer Toggle State --- 
   const [showDensity, setShowDensity] = useState(true);
-  const [showHeatmap, setShowHeatmap] = useState(false);
   const [showInfrastructurePins, setShowInfrastructurePins] = useState(true);
   const [showRoadClosures, setShowRoadClosures] = useState(true);
   const [showReservoirHeatmap, setShowReservoirHeatmap] = useState(true);
+  const [showBrokenBuilding, setShowBrokenBuilding] = useState(false);
+  const [showSocialMediaPins, setShowSocialMediaPins] = useState(false);
 
   // --- Map View State --- 
-  const [mapCenter, setMapCenter] = useState({ lat: 39.4699, lng: -0.3763 });
-  const [mapZoom, setMapZoom] = useState(12);
-  const [selectedMunicipality, setSelectedMunicipality] = useState<GeoJsonFeature | null>(null);
+  const mapCenter = { lat: 39.4699, lng: -0.3763 };
+  const mapZoom = 12;
+  const selectedMunicipality: GeoJsonFeature | null = null;
 
   // --- Fetched Data State (Lifted from GoogleMapCard) ---
   const [municipalitySummary, setMunicipalitySummary] = useState<MunicipalitySummary | null>(null);
@@ -122,38 +152,46 @@ export function View1() {
   const [articles, setArticles] = useState<any[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [articlesError, setArticlesError] = useState<string | null>(null);
+  const [socialMediaPostsData, setSocialMediaPostsData] = useState<SocialMediaPost[]>([]);
+  const [socialMediaLoading, setSocialMediaLoading] = useState(false);
+  const [socialMediaError, setSocialMediaError] = useState<string | null>(null);
 
   // --- Static/Mock Data State --- 
-  const [heatmapData, setHeatmapData] = useState<MapData>([]); // Static heatmap data
-  const [polygonData, setPolygonData] = useState<GeoJsonFeature[]>([]); // Static polygon data
-  const [mockTouristEstimate] = useState(15000); // Adjusted mock data
-  const [mockInfraStatus] = useState("Partially Degraded"); // Adjusted mock data
-  const [mockAffectedPopulation] = useState(45000); // New mock data
+  const [heatmapData, setHeatmapData] = useState<MapData>([]);
+  const polygonData: GeoJsonFeature[] = [];
+  const [mockTouristEstimate] = useState(15000);
+  const [mockInfraStatus] = useState("Partially Degraded");
+  const [mockAffectedPopulation] = useState(45000);
   const [mockAlerts] = useState<string[]>([
       "Flood warning for Turia river extended.",
       "Power outages reported in El Carmen district."
-  ]); // Example mock data
+  ]);
 
-  // --- START: Report State --- 
+  // --- Report State --- 
   const [reportContent, setReportContent] = useState<string>("");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportGenerated, setReportGenerated] = useState(false);
-  // --- END: Report State --- 
+
+  // --- START: Specific Request Modal State ---
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
+  const [requestText, setRequestText] = useState('');
+  const [specificRequestSubmitted, setSpecificRequestSubmitted] = useState(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  // --- END: Specific Request Modal State ---
 
   // --- Toggle Handlers --- 
   const toggleDensity = useCallback(() => setShowDensity((v) => !v), []);
-  const toggleHeatmap = useCallback(() => setShowHeatmap((v) => !v), []);
   const toggleInfrastructurePins = useCallback(() => setShowInfrastructurePins((v) => !v), []);
   const toggleRoadClosures = useCallback(() => setShowRoadClosures((v) => !v), []);
   const toggleReservoirHeatmap = useCallback(() => setShowReservoirHeatmap((v) => !v), []);
+  const toggleBrokenBuilding = useCallback(() => setShowBrokenBuilding((v) => !v), []);
+  const toggleSocialMediaPins = useCallback(() => setShowSocialMediaPins((v) => !v), []);
 
   // --- Map Interaction Handlers --- 
-  const handleBoundsChanged = useCallback((bounds: any) => {
+  const handleBoundsChanged = useCallback((bounds: google.maps.LatLngBoundsLiteral | null ) => {
+    if (!bounds) return;
     console.log('Bounds changed:', bounds);
-    // Update map center/zoom based on interaction
-    // setMapCenter({ lat: bounds.centerLat, lng: bounds.centerLng });
-    // setMapZoom(bounds.zoom);
   }, []);
 
   const handleMapClick = useCallback((point: { lat: number; lng: number }) => {
@@ -191,7 +229,7 @@ export function View1() {
     fetch('/api/places')
       .then(res => res.ok ? res.json() : Promise.reject(new Error(`Fetch failed: ${res.statusText}`))) 
       .then(data => setInfrastructurePlaces(data || [])) 
-      .catch(err => setInfraError(err.message || 'Could not load infrastructure data.'))
+      .catch((err: Error) => setInfraError(err.message || 'Could not load infrastructure data.'))
       .finally(() => setInfraLoading(false));
   }, [showInfrastructurePins]);
 
@@ -204,9 +242,9 @@ export function View1() {
     setRoadClosureLoading(true);
     setRoadClosureError(null);
     fetch('/api/road-closures')
-      .then(res => res.ok ? res.json() : Promise.reject(new Error(`Fetch failed: ${res.statusText}`)))
+      .then(res => res.ok ? res.json() : Promise.reject(new Error(`Fetch failed: ${res.statusText}`))) 
       .then(data => setRoadClosures(data || []))
-      .catch(err => setRoadClosureError(err.message || 'Could not load road closure data.'))
+      .catch((err: Error) => setRoadClosureError(err.message || 'Could not load road closure data.'))
       .finally(() => setRoadClosureLoading(false));
   }, [showRoadClosures]);
 
@@ -221,7 +259,7 @@ export function View1() {
     fetch('/api/reservoir-levels')
       .then(res => res.ok ? res.json() : Promise.reject(new Error(`Fetch failed: ${res.statusText}`))) 
       .then(data => setReservoirLevels(data || []))
-      .catch(err => setReservoirError(err.message || 'Could not load reservoir level data.'))
+      .catch((err: Error) => setReservoirError(err.message || 'Could not load reservoir level data.'))
       .finally(() => setReservoirLoading(false));
   }, [showReservoirHeatmap]);
 
@@ -232,43 +270,40 @@ export function View1() {
     fetch('/api/articles')
       .then(res => res.ok ? res.json() : Promise.reject(new Error(`Fetch failed: ${res.statusText}`)))
       .then(data => setArticles(data || []))
-      .catch(err => setArticlesError(err.message || 'Could not load articles.'))
+      .catch((err: Error) => setArticlesError(err.message || 'Could not load articles.'))
       .finally(() => setArticlesLoading(false));
-  }, []); // Fetch articles once on mount
+  }, []);
 
-  // --- START: Fetch Generated Report --- 
-  /*
+  // Fetch Social Media Posts
   useEffect(() => {
-    setReportLoading(true);
-    setReportError(null);
-    fetch('/api/generate-report')
-      .then(res => {
-        if (!res.ok) { 
-          return res.json().then(err => { throw new Error(err.error || `Fetch failed: ${res.statusText}`) });
+    const fetchPosts = async () => {
+      setSocialMediaLoading(true);
+      setSocialMediaError(null);
+      try {
+        const response = await fetch('/api/social-media-posts');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
-        return res.json();
-      })
-      .then(data => {
-        setReportContent(data.report || "");
-      })
-      .catch(err => {
-        console.error("Report fetch error:", err);
-        setReportError(err.message || 'Could not load report.');
-        setReportContent("");
-      })
-      .finally(() => setReportLoading(false));
-  }, []); // Fetch report once on mount
-  */
-  // --- END: Fetch Generated Report --- 
+        const data: SocialMediaPost[] = await response.json();
+        setSocialMediaPostsData(data);
+      } catch (err) {
+        console.error("Fetch social media error in View1:", err);
+        setSocialMediaError(err instanceof Error ? err.message : 'Failed to load social media posts');
+      } finally {
+        setSocialMediaLoading(false);
+      }
+    };
+    fetchPosts();
+  }, []);
 
-  // --- START: New Report Generation Handler --- 
+  // --- New Report Generation Handler --- 
   const handleGenerateReport = useCallback(async () => {
-    setReportGenerated(true); // Mark generation as started
+    setReportGenerated(true);
     setReportLoading(true);
     setReportError(null);
-    setReportContent(""); // Clear previous report/error
+    setReportContent("");
 
-    // Simulate initial loading delay
     await new Promise(resolve => setTimeout(resolve, 3000)); 
 
     try {
@@ -279,15 +314,29 @@ export function View1() {
       }
       const data = await res.json();
       setReportContent(data.report || "");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Report fetch error:", err);
-      setReportError(err.message || 'Could not load report.');
-      setReportGenerated(false); // Allow retry on error
+      setReportError(err instanceof Error ? err.message : 'Could not load report.');
+      setReportGenerated(false);
     } finally {
       setReportLoading(false);
     }
-  }, []); // No dependencies, safe to use useCallback
-  // --- END: New Report Generation Handler --- 
+  }, []);
+
+  // --- START: Specific Request Submit Handler ---
+  const handleSubmitRequest = useCallback(() => {
+    setIsSubmittingRequest(true);
+
+    setTimeout(() => {
+      console.log("Submitted request:", requestText);
+      setSpecificRequestSubmitted(true);
+      setRequestText('');
+      setIsSubmittingRequest(false);
+      closeModal();
+    }, 5000);
+
+  }, [requestText, closeModal]);
+  // --- END: Specific Request Submit Handler ---
 
   // --- Event Details --- 
   const eventTitle = "Valencia Flooding";
@@ -303,18 +352,11 @@ export function View1() {
     }
   };
 
-  // --- REMOVED: Mock Report & Download Logic (now fetched) --- 
-  /*
-  const mockReportText = ...;
-  const handleDownloadPdf = () => { ... };
-  */
- // --- START: Placeholder Download Function (still needed) --- 
+ // --- Placeholder Download Function --- 
   const handleDownloadPdf = () => {
     console.log("Simulating PDF download...");
-    // In a real app, trigger download using `reportContent`
     alert("PDF download simulation (check console).");
   };
- // --- END: Placeholder Download Function --- 
 
   return (
     <Grid gutter="md">
@@ -342,14 +384,14 @@ export function View1() {
 
           <GoogleMapCard
             showDensity={showDensity}
-            showHeatmap={showHeatmap}
+            showHeatmap={showBrokenBuilding}
             showInfrastructurePins={showInfrastructurePins}
             showRoadClosures={showRoadClosures}
             showReservoirHeatmap={showReservoirHeatmap}
+            showSocialMediaPins={showSocialMediaPins}
+            socialMediaPosts={socialMediaPostsData}
             center={mapCenter}
             zoom={mapZoom}
-            // Pass fetched data and states down
-            heatmapData={heatmapData}
             polygonData={polygonData}
             infrastructurePlaces={infrastructurePlaces}
             infraLoading={infraLoading}
@@ -360,33 +402,31 @@ export function View1() {
             reservoirLevels={reservoirLevels}
             reservoirLoading={reservoirLoading}
             reservoirError={reservoirError}
-            // Pass article data if needed by map later
-            // articles={articles}
-            // articlesLoading={articlesLoading}
-            // articlesError={articlesError}
-            // Callbacks
             onBoundsChanged={handleBoundsChanged}
             onMapClick={handleMapClick}
             selectedMunicipality={selectedMunicipality}
           />
           <SettingsCard
             showDensity={showDensity}
-            showHeatmap={showHeatmap}
             showInfrastructurePins={showInfrastructurePins}
             showRoadClosures={showRoadClosures}
             showReservoirHeatmap={showReservoirHeatmap}
+            showSocialMediaPins={showSocialMediaPins}
             onToggleDensity={toggleDensity}
-            onToggleHeatmap={toggleHeatmap}
             onToggleInfrastructurePins={toggleInfrastructurePins}
             onToggleRoadClosures={toggleRoadClosures}
             onToggleReservoirHeatmap={toggleReservoirHeatmap}
+            onToggleSocialMediaPins={toggleSocialMediaPins}
+            onOpenSpecificRequestModal={openModal}
+            specificRequestSubmitted={specificRequestSubmitted}
+            showBrokenBuilding={showBrokenBuilding}
+            onToggleBrokenBuilding={toggleBrokenBuilding}
           />
 
           {/* --- START: Charts Area --- */} 
           <Title order={4} mt="md">Analytics</Title> 
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md"> {/* Grid for charts */} 
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             
-            {/* Reservoir Trend Chart (Moved) */} 
             <Card shadow="sm" padding="lg" radius="md">
               <Stack gap="xs">
                  <Group gap="xs">
@@ -406,23 +446,26 @@ export function View1() {
                     yAxisProps={{ width: 30 }}
                     connectNulls
                     tooltipProps={{
-                      content: ({ label, payload }) => (
-                        <Paper px="md" py="sm" withBorder shadow="md" radius="md">
-                          <Text fw={500} mb={5}>{label}</Text>
-                          {payload?.map((item: any) => (
-                             <Text key={item.name} c={item.color} fz="sm">
-                                {item.name}: {item.value}
-                             </Text>
-                          ))}
-                       </Paper>
-                      ),
+                      content: (props) => {
+                        if (!props || !Array.isArray(props.payload) || props.payload.length === 0) return null;
+                        const { label, payload } = props as { label?: string; payload?: Array<{ name: string; value: number; color: string }> };
+                        return (
+                          <Paper px="md" py="sm" withBorder shadow="md" radius="md">
+                            <Text fw={500} mb={5}>{label}</Text>
+                            {payload?.map((item) => (
+                              <Text key={item.name} c={item.color} fz="sm">
+                                  {item.name}: {item.value}
+                              </Text>
+                            ))}
+                        </Paper>
+                        );
+                      }
                     }}
                   />
               </Stack>
             </Card>
 
-            {/* Infrastructure Status Chart (Moved) */} 
-             <Card shadow="sm" padding="lg" radius="md">
+            <Card shadow="sm" padding="lg" radius="md">
                <Stack gap="xs">
                  <Group gap="xs">
                      <ThemeIcon variant="light" color="teal" size="sm">
@@ -431,7 +474,7 @@ export function View1() {
                      <Title order={5}>Infrastructure Status</Title>
                   </Group>
                   <DonutChart
-                      h={170} // Slightly taller for donut
+                      h={170}
                       data={mockInfraStatusData}
                       chartLabel={`${mockInfraStatusData.reduce((acc, item) => acc + item.value, 0)} Total`}
                       tooltipDataSource="segment"
@@ -439,7 +482,6 @@ export function View1() {
                </Stack>
             </Card>
 
-            {/* NEW: Road Closure Types Chart */} 
             <Card shadow="sm" padding="lg" radius="md">
              <Stack gap="xs">
                <Group gap="xs">
@@ -454,25 +496,28 @@ export function View1() {
                     dataKey="name"
                     type="stacked"
                     orientation="vertical"
-                    series={[{ name: 'value', color: 'orange.6' }]} // Use a single series for simple count
+                    series={[{ name: 'value', color: 'orange.6' }]}
                     withXAxis={false}
                     tooltipProps={{
-                       content: ({ label, payload }) => (
-                         <Paper px="md" py="sm" withBorder shadow="md" radius="md">
-                           <Text fw={500} mb={5}>{label}</Text>
-                           {payload?.map((item: any) => (
-                              <Text key={item.name} c={item.color} fz="sm">
-                                 Count: {item.value}
-                              </Text>
-                           ))}
-                        </Paper>
-                       ),
+                       content: (props) => {
+                          if (!props || !Array.isArray(props.payload) || props.payload.length === 0) return null;
+                          const { label, payload } = props as { label?: string; payload?: Array<{ name: string; value: number; color: string }> };
+                          return (
+                            <Paper px="md" py="sm" withBorder shadow="md" radius="md">
+                              <Text fw={500} mb={5}>{label}</Text>
+                              {payload?.map((item) => (
+                                <Text key={item.name} c={item.color} fz="sm">
+                                  Count: {item.value}
+                                </Text>
+                              ))}
+                          </Paper>
+                          );
+                        }
                     }}
                  />
              </Stack>
           </Card>
 
-          {/* NEW: Alert Trend Chart */} 
           <Card shadow="sm" padding="lg" radius="md">
             <Stack gap="xs">
                <Group gap="xs">
@@ -489,24 +534,28 @@ export function View1() {
                   curveType="step"
                   withXAxis={false}
                   withYAxis={true}
-                  yAxisProps={{ width: 30, domain: [0, 'auto'] }} // Ensure y-axis starts at 0
+                  yAxisProps={{ width: 30, domain: [0, 'auto'] }}
                   tooltipProps={{
-                    content: ({ label, payload }) => (
-                      <Paper px="md" py="sm" withBorder shadow="md" radius="md">
-                        <Text fw={500} mb={5}>{label}</Text>
-                        {payload?.map((item: any) => (
-                           <Text key={item.name} c={item.color} fz="sm">
-                              {item.name}: {item.value}
-                           </Text>
-                        ))}
-                     </Paper>
-                    ),
+                    content: (props) => {
+                      if (!props || !Array.isArray(props.payload) || props.payload.length === 0) return null;
+                      const { label, payload } = props as { label?: string; payload?: Array<{ name: string; value: number; color: string }> };
+                      return (
+                        <Paper px="md" py="sm" withBorder shadow="md" radius="md">
+                          <Text fw={500} mb={5}>{label}</Text>
+                          {payload?.map((item) => (
+                            <Text key={item.name} c={item.color} fz="sm">
+                                {item.name}: {item.value}
+                            </Text>
+                          ))}
+                      </Paper>
+                      );
+                    }
                   }}
                 />
             </Stack>
           </Card>
 
-          </SimpleGrid> {/* End Grid for charts */} 
+          </SimpleGrid>
           {/* --- END: Charts Area --- */} 
 
         </Stack>
@@ -531,7 +580,6 @@ export function View1() {
               ) : (
                 <Text size="sm" c="dimmed">Municipality data unavailable.</Text>
               )}
-              {/* START: Add Total Population */} 
               {loadingSummary ? (
                   <Skeleton height={10} mt={4} radius="xl" width="60%" />
               ) : municipalitySummary?.population ? (
@@ -542,7 +590,6 @@ export function View1() {
                   <Text size="sm">Total Pop: {municipalitySummary.population.toLocaleString()}</Text>
                 </Group>
                ) : null}
-               {/* END: Add Total Population */} 
                <Group gap="xs">
                  <ThemeIcon size="sm" variant="light" color="gray">
                     <IconUsers style={{ width: rem(14), height: rem(14) }} />
@@ -584,7 +631,6 @@ export function View1() {
                 <Text size="sm">News Articles:</Text>
                  <Badge color="gray" variant="light">{articlesLoading ? '...' : articlesError ? 'Err' : articles.length}</Badge>
               </Group>
-              {/* Add more counts as needed */} 
             </Stack>
           </Card>
 
@@ -612,9 +658,8 @@ export function View1() {
              <Stack gap="sm">
                <Group justify="space-between">
                  <Title order={5}>Report</Title>
-                 {/* Show Download button only when report is successfully loaded */}
                  {reportGenerated && !reportLoading && !reportError && reportContent && (
-                   <Button
+                   <MantineButton
                      variant="light"
                      size="xs"
                      color="gray"
@@ -622,35 +667,29 @@ export function View1() {
                      leftSection={<IconDownload size={14} />}
                    >
                      Download
-                   </Button>
+                   </MantineButton>
                  )}
                </Group>
                <Divider />
 
-               {/* Conditional Rendering based on state */}
                {!reportGenerated && !reportLoading ? (
-                 // Initial state: Show Generate button
                  <Center>
-                   <Button onClick={handleGenerateReport}>Generate Report</Button>
+                   <MantineButton onClick={handleGenerateReport}>Generate Report</MantineButton>
                  </Center>
                ) : reportLoading ? (
-                 // Loading state
-                 <Center h={250}> {/* Give height to center loader */}
+                 <Center h={250}>
                    <Loader size="sm" />
                  </Center>
                ) : reportError ? (
-                 // Error state
-                 <Stack align="center" h={250} justify="center"> {/* Give height */}
+                 <Stack align="center" h={250} justify="center">
                    <Text c="red" size="sm">Error: {reportError}</Text>
-                   <Button onClick={handleGenerateReport} variant="light" size="xs">Retry</Button>
+                   <MantineButton onClick={handleGenerateReport} variant="light" size="xs">Retry</MantineButton>
                  </Stack>
                ) : (
-                 // Success state: Show report
                  <ScrollArea h={250}>
-                   <div className="report-markdown"> {/* Wrapper for styling */}
+                   <div className="report-markdown">
                      <ReactMarkdown
                        components={{
-                         // Optional styling components
                        }}
                      >
                        {reportContent}
@@ -664,6 +703,35 @@ export function View1() {
           
         </Stack>
       </Grid.Col>
+
+      {/* --- START: Specific Request Modal --- */}
+      <Modal opened={modalOpened} onClose={closeModal} title="Make a Specific Request">
+        <Stack>
+          <TextInput
+            label="Your Request"
+            placeholder="e.g., Check status of bridges over Turia"
+            value={requestText}
+            onChange={(event) => setRequestText(event.currentTarget.value)}
+          />
+          <Group justify="flex-end">
+             <MantineButton 
+               onClick={closeModal} 
+               variant="default" 
+              >
+                Cancel
+              </MantineButton>
+             <MantineButton 
+               onClick={handleSubmitRequest} 
+               disabled={!requestText.trim() || isSubmittingRequest}
+               loading={isSubmittingRequest}
+              >
+               Submit
+              </MantineButton>
+          </Group>
+        </Stack>
+      </Modal>
+      {/* --- END: Specific Request Modal --- */}
+
     </Grid>
   );
 }

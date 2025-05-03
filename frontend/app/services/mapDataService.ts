@@ -3,11 +3,42 @@
 // --- Heatmap Data ---
 // TODO: Replace with actual API call
 const heatmapData = [
-    { lat: 39.47, lng: -0.37, weight: 1 },
-    { lat: 39.471, lng: -0.375, weight: 1 },
-    { lat: 39.469, lng: -0.378, weight: 1 },
-    { lat: 39.472, lng: -0.372, weight: 1 },
-    { lat: 39.468, lng: -0.38, weight: 1 },
+  // Dense cluster near the beach
+  { lat: 39.4720, lng: -0.3300, weight: 1 },
+  { lat: 39.4680, lng: -0.3280, weight: 1 },
+  { lat: 39.4750, lng: -0.3260, weight: 1 },
+  { lat: 39.4640, lng: -0.3320, weight: 1 },
+  { lat: 39.4600, lng: -0.3290, weight: 1 },
+  { lat: 39.4780, lng: -0.3270, weight: 1 },
+  { lat: 39.4650, lng: -0.3250, weight: 1 },
+  { lat: 39.4710, lng: -0.3310, weight: 1 },
+  { lat: 39.4760, lng: -0.3240, weight: 1 },
+  { lat: 39.4630, lng: -0.3230, weight: 1 },
+
+  // Medium density mid-range
+  { lat: 39.4700, lng: -0.3550, weight: 1 },
+  { lat: 39.4750, lng: -0.3500, weight: 1 },
+  { lat: 39.4620, lng: -0.3520, weight: 1 },
+  { lat: 39.4680, lng: -0.3480, weight: 1 },
+  { lat: 39.4770, lng: -0.3570, weight: 1 },
+  { lat: 39.4640, lng: -0.3530, weight: 1 },
+
+  // Distributed city center
+  { lat: 39.4710, lng: -0.3810, weight: 1 },
+  { lat: 39.4685, lng: -0.3795, weight: 1 },
+  { lat: 39.4730, lng: -0.3780, weight: 1 },
+  { lat: 39.4665, lng: -0.3765, weight: 1 },
+  { lat: 39.4725, lng: -0.3750, weight: 1 },
+  { lat: 39.4670, lng: -0.3735, weight: 1 },
+  { lat: 39.4735, lng: -0.3720, weight: 1 },
+  { lat: 39.4680, lng: -0.3705, weight: 1 },
+  { lat: 39.4715, lng: -0.3680, weight: 1 },
+  { lat: 39.4695, lng: -0.3740, weight: 1 },
+  { lat: 39.4740, lng: -0.3770, weight: 1 },
+  { lat: 39.4660, lng: -0.3725, weight: 1 },
+  { lat: 39.4730, lng: -0.3695, weight: 1 },
+  { lat: 39.4690, lng: -0.3710, weight: 1 },
+  { lat: 39.4690, lng: -0.3800, weight: 1 }
 ];
 
 export const getDemoHeatmapData = () => {

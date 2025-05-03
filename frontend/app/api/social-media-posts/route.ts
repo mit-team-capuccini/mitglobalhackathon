@@ -46,7 +46,7 @@ async function connectToDatabase() {
   if (!uri) {
     throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
   }
-  if (client && client.topology && client.topology.isConnected()) {
+  if (client) {
     return client.db(dbName);
   }
   client = new MongoClient(uri);
@@ -67,11 +67,28 @@ export async function GET() {
                           .toArray();
 
     // We need to convert ObjectId and Date objects for JSON serialization if they aren't strings
-    const serializablePosts = posts.map(post => ({
-      ...post,
-      _id: post._id.toString(), // Convert ObjectId to string
-      timestamp: new Date(post.timestamp.$date).toISOString(), // Convert BSON date to ISO string
-    }));
+    const serializablePosts = posts.map(post => {
+      let isoTimestamp: string | null = null;
+      try {
+        // Check if timestamp and $date exist before creating Date
+        if (post.timestamp?.$date) {
+          const date = new Date(post.timestamp.$date);
+          // Check if the date is valid after creation
+          if (!isNaN(date.getTime())) {
+             isoTimestamp = date.toISOString();
+          }
+        }
+      } catch {
+        console.warn(`Failed to parse timestamp for post ${post._id}:`, post.timestamp);
+        // Keep isoTimestamp as null if any error occurs
+      }
+
+      return {
+        ...post,
+        _id: post._id.toString(), // Convert ObjectId to string
+        timestamp: isoTimestamp, // Use the validated ISO string or null
+      };
+    });
 
     return NextResponse.json(serializablePosts);
   } catch (error) {

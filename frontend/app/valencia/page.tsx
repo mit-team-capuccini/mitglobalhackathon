@@ -6,8 +6,7 @@ import {
   Container,
   Group,
   ThemeIcon,
-  Title,
-  Stack
+  Title
 } from '@mantine/core';
 import { IconLayoutDashboard } from '@tabler/icons-react';
 // Remove imports that are now in View1.tsx

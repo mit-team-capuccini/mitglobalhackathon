@@ -1,4 +1,6 @@
-import type { InfrastructurePlace, RoadClosure, ReservoirLevel } from '../components/GoogleMapCard'; // Assuming types are exported here
+// import type { InfrastructurePlace, RoadClosure, ReservoirLevel } from './GoogleMapCard'; // Removed unused
+// import type { SocialMediaPost } from './socialMediaTypes'; // Removed unused (assuming)
+import type { ReservoirLevel } from '../components/GoogleMapCard'; // Re-added used import
 
 interface ReportData {
     eventTitle: string;

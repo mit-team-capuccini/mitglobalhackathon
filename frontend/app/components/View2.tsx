@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Title,
@@ -13,8 +13,15 @@ import {
   Badge,
   Group,
   Avatar,
-  rem
+  rem,
+  ThemeIcon,
+  Paper
 } from '@mantine/core';
+import {
+  IconArticle,
+  IconMoodSmile,
+  IconTags
+} from '@tabler/icons-react';
 
 interface Article {
   url: string;
@@ -69,6 +76,19 @@ export function View2() {
       });
   }, []);
 
+  const summaryData = useMemo(() => {
+    const totalArticles = articles.length;
+    // Mock metrics
+    const mockSentiment = 0.65; 
+    const mockKeyThemes = ['Infrastructure', 'Response', 'Impact', 'Valencia'];
+
+    return {
+      totalArticles,
+      mockSentiment,
+      mockKeyThemes,
+    };
+  }, [articles]);
+
   if (loading) {
     return (
       <Center style={{ height: 400 }}>
@@ -85,38 +105,75 @@ export function View2() {
     );
   }
 
-  if (articles.length === 0) {
-    return (
-      <Center style={{ height: 400 }}>
-        <Text>No articles found.</Text>
-      </Center>
-    );
-  }
-
   return (
     <Stack>
-      <Title order={2} ta="center" mb="lg">News Articles</Title>
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-        {articles.map((article, index) => (
-          <Anchor href={article.url} target="_blank" rel="noopener noreferrer" key={article.url + index} style={{ textDecoration: 'none' }}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: '100%' }}>
-              <Stack justify="space-between" style={{ height: '100%' }}>
-                <Stack gap="xs">
-                  <Text fw={500} size="sm" lineClamp={3}>
-                    {article.translated_title || article.title}
-                  </Text>
-                </Stack>
-                <Group justify="space-between" mt="sm">
-                  <Avatar src={getFaviconUrl(article.url)} size={rem(20)} radius="sm" />
-                  <Badge color="gray" variant="light" size="xs">
-                    {formatDate(article.date)}
-                  </Badge>
-                </Group>
+      <Title order={2} ta="center" mb="lg">News Articles Analysis</Title>
+
+      {articles.length > 0 && (
+        <Paper p="md" withBorder radius="md" mb="lg">
+          <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }}>
+            <Group wrap="nowrap" gap="xs">
+              <ThemeIcon size="lg" variant="light" color="blue">
+                <IconArticle style={{ width: rem(24), height: rem(24) }} />
+              </ThemeIcon>
+              <Stack gap={0}>
+                <Text fw={500}>{summaryData.totalArticles}</Text>
+                <Text size="xs" c="dimmed">Total Articles</Text>
               </Stack>
-            </Card>
-          </Anchor>
-        ))}
-      </SimpleGrid>
+            </Group>
+
+            <Group wrap="nowrap" gap="xs">
+              <ThemeIcon size="lg" variant="light" color={summaryData.mockSentiment > 0.5 ? 'green' : 'orange'}>
+                <IconMoodSmile style={{ width: rem(24), height: rem(24) }} />
+              </ThemeIcon>
+              <Stack gap={0}>
+                <Text fw={500}>{`${(summaryData.mockSentiment * 100).toFixed(0)}%`}</Text>
+                <Text size="xs" c="dimmed">Avg. Sentiment</Text>
+              </Stack>
+            </Group>
+
+            <Group wrap="nowrap" gap="xs">
+              <ThemeIcon size="lg" variant="light" color="grape">
+                <IconTags style={{ width: rem(24), height: rem(24) }} />
+              </ThemeIcon>
+              <Stack gap={0}>
+                <Text fw={500} lineClamp={1}>{summaryData.mockKeyThemes.join(', ')}</Text>
+                <Text size="xs" c="dimmed">Key Themes</Text>
+              </Stack>
+            </Group>
+          </SimpleGrid>
+        </Paper>
+      )}
+
+      {articles.length === 0 && !loading && !error && (
+         <Center style={{ height: 200 }}>
+           <Text>No articles found.</Text>
+         </Center>
+      )}
+
+      {articles.length > 0 && (
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+          {articles.map((article, index) => (
+            <Anchor href={article.url} target="_blank" rel="noopener noreferrer" key={article.url + index} style={{ textDecoration: 'none' }}>
+              <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: '100%' }}>
+                <Stack justify="space-between" style={{ height: '100%' }}>
+                  <Stack gap="xs">
+                    <Text fw={500} size="sm" lineClamp={3}>
+                      {article.translated_title || article.title}
+                    </Text>
+                  </Stack>
+                  <Group justify="space-between" mt="sm">
+                    <Avatar src={getFaviconUrl(article.url)} size={rem(20)} radius="sm" />
+                    <Badge color="gray" variant="light" size="xs">
+                      {formatDate(article.date)}
+                    </Badge>
+                  </Group>
+                </Stack>
+              </Card>
+            </Anchor>
+          ))}
+        </SimpleGrid>
+      )}
     </Stack>
   );
 } 
