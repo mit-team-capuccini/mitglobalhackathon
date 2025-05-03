@@ -2,12 +2,12 @@ import os
 import json
 import logging
 from typing import List, Optional, Dict
-from prompts import water_reservoir_prompt_user, water_reservoir_prompt_system, road_closure_prompt_user, road_closure_prompt_system, electric_incident_prompt_user, electric_incident_prompt_system
+from pydantic import ValidationError
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from pydantic import ValidationError
-from models import RoadClosure, UtilityIncident, ReservoirData, OutputItem, RoadClosureData, ElectricIncidentData
+from .prompts import water_reservoir_prompt_user, water_reservoir_prompt_system, road_closure_prompt_user, road_closure_prompt_system, electric_incident_prompt_user, electric_incident_prompt_system
+from .models import RoadClosure, UtilityIncident, ReservoirData, OutputItem, RoadClosureData, ElectricIncidentData
 load_dotenv()
 
 # Configure logging
@@ -79,9 +79,13 @@ ROAD_CLOSURE_SCHEMA = {
                     "summary": {
                         "type": ["string", "null"],
                         "description": "short description of closure or null"
+                    },
+                    "url": {
+                        "type": ["string", "null"],
+                        "description": "link to the official closure page or null"
                     }
                 },
-                "required": ["coordinates", "summary"],
+                "required": ["coordinates", "summary", "url"],
                 "additionalProperties": False
             }
         }
@@ -123,7 +127,7 @@ ELECTRIC_INCIDENT_SCHEMA = {
 
 def fetch_reservoir_data(
      user_prompt: str = water_reservoir_prompt_user,
-     model: str = "gpt-4.1-mini-2025-04-14", # Using a model known to support json_schema
+     model: str = "gpt-4.1-mini-2025-04-14",
      openai_api_key: Optional[str] = None
 ) -> List[ReservoirData]:
     """Fetch structured government data based on a user prompt, returning JSON matching a predefined schema.
@@ -253,4 +257,4 @@ if __name__ == "__main__":
     except (ValueError, RuntimeError) as e:
         logging.error(f"Error in main execution: {e}")
     except Exception as e:
-        logging.exception("An unexpected error occurred:") # Log full traceback for unexpected errors
+        logging.exception("An unexpected error occurred:")

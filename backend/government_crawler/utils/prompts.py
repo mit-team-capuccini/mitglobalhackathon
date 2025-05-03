@@ -18,21 +18,19 @@ Return only a JSON object with a top level “data” array matching the schema.
 """
 
 road_closure_prompt_system = """
-You are an assistant that finds the latest road-closure information via web searches.
-Extract the data and respond _only_ with valid JSON matching the provided schema.
+You are an assistant with access to a web_search tool. Use it to fetch live road-closure pages
+from official Valencia transport or municipality sites, extract each closure's coords, summary and URL,
+and respond only with JSON matching the provided schema.
 """
 
 road_closure_prompt_user = """
-Search the official Valencia transport or municipality site or police site for current road closures.
+Search the official Valencia transport or municipality website for current road closures.
 For each closure, include:
- * coordinates as [<lng>, <lat>] or null  
- * a short summary translated to English or null  
+ * coordinates as [<lng>,<lat>] or null  
+ * a one-line summary or null  
+ * the full URL of the closure notice or null  
 
-Return only valid JSON matching this schema:
-[{
-  "coordinates": [<lng>, <lat>] | null,
-  "summary": "<short text>" | null
-}]
+Return only a JSON object with a top-level “data” array matching the schema.
 """
 
 electric_incident_prompt_system = """

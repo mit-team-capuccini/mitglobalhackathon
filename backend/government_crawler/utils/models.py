@@ -20,18 +20,17 @@ class ReservoirData(BaseModel):
     river_level_height:   Optional[RiverLevelHeight]
     url:                  Optional[str]
 
-class OutputItem(BaseModel):
-    road_closures: Optional[List[RoadClosure]]
-    reservoir_levels: Optional[List[ReservoirData]]
-    utility_incidents: Optional[List[UtilityIncident]]
-    population: Optional[Dict[str, int]]
-    river_level_height: Optional[RiverLevelHeight]
-
 class RoadClosureData(BaseModel):
     coordinates: Optional[List[float]] 
     summary:     Optional[str]
+    url:         Optional[str]
 
 class ElectricIncidentData(BaseModel):
     coordinates:   Optional[List[float]] 
     summary:       Optional[str]
     url:           Optional[str] 
+
+class OutputItem(BaseModel):
+    road_closures: Optional[List[RoadClosureData]]
+    reservoir_levels: Optional[List[ReservoirData]]
+    utility_incidents: Optional[List[ElectricIncidentData]]
