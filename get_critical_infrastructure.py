@@ -37,11 +37,10 @@ def get_critical_buildings(api_key, location, radius=1000):
     
     # List of critical infrastructure types
     types = [
-        'library', 'preschool', 'primary_school', 'school', 'secondary_school', 'university',
-        'city_hall', 'courthouse', 'embassy', 'fire_station', 'government_office',
-        'local_government_office', 'police', 'post_office', 'dental_clinic', 'dentist',
-        'doctor', 'drugstore', 'hospital', 'pharmacy', 'church', 'hindu_temple',
-        'mosque', 'synagogue', 'supermarket', 'convenience_store', 'airport', 'ferry_terminal'
+        'preschool', 'primary_school', 'school', 'secondary_school', 'university',
+        'courthouse', 'embassy', 'fire_station', 'government_office',
+        'local_government_office', 'police',
+        'doctor', 'drugstore', 'hospital', 'airport', 'ferry_terminal'
     ]
     
     all_places = []
