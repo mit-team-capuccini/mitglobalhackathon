@@ -1,3 +1,4 @@
+cache/
 venv/
 __pycache__/
 *.pyc
@@ -6,4 +7,4 @@ __pycache__/
 *.pyw
 *.pyz
 
-cache/
+backend/government_crawler/utils/.env
