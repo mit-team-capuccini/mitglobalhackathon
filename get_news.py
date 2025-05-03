@@ -69,11 +69,22 @@ def get_news(query, start_date=None, end_date=None, max_articles=100):
         # Extract and return the articles
         articles = []
         for article in data.get('articles', []):
+            # Extract and format the date
+            date_str = article.get('seendate', '')
+            if date_str:
+                try:
+                    # Convert GDELT date format (YYYYMMDDHHMMSS) to datetime
+                    date_obj = datetime.strptime(date_str, '%Y%m%d%H%M%S')
+                    formatted_date = date_obj.strftime('%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    formatted_date = date_str
+            else:
+                formatted_date = 'Unknown'
+            
             articles.append({
                 'url': article.get('url'),
                 'title': article.get('title'),
-                'date': article.get('date'),
-                'source': article.get('source')
+                'date': formatted_date
             })
         
         return articles
@@ -90,7 +101,6 @@ def analyze_article_with_chatgpt(article, client):
     Title: {article['title']}
     URL: {article['url']}
     Date: {article['date']}
-    Source: {article['source']}
     
     Respond in this exact format:
     RELEVANCE: [YES/NO]
@@ -127,8 +137,8 @@ def save_to_mongodb(articles, query, start_date, end_date):
     try:
         # Connect to MongoDB
         client = MongoClient(mongo_uri)
-        db = client['critical_infrastructure']
-        collection = db['news_articles']
+        db = client['news']
+        collection = db['articles']
         
         # Prepare the document to insert
         document = {
@@ -187,7 +197,6 @@ if __name__ == "__main__":
                 print(f"Translated Title: {article['translated_title']}")
                 print(f"URL: {article['url']}")
                 print(f"Date: {article['date']}")
-                print(f"Source: {article['source']}")
                 print("-" * 50)
         else:
             print("No relevant articles found.")
