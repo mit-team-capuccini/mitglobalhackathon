@@ -9,7 +9,7 @@ import {
 
 export function SettingsCard() {
   return (
-    <Card padding="lg" radius="lg" withBorder bg="gray.1">
+    <Card padding="lg" radius="lg" bg="gray.3">
       <Stack>
         <Title order={4}>Settings for the Card</Title>
         <Checkbox label="Show Traffic" defaultChecked />
