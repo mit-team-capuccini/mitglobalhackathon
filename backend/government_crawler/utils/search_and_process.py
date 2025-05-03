@@ -2,46 +2,19 @@ import os
 import json
 import logging
 from typing import List, Optional, Dict
-from prompts import water_reservoir_prompt_user, water_reservoir_prompt_system
-from dotenv import load_dotenv  # Load .env variables
-
+from prompts import water_reservoir_prompt_user, water_reservoir_prompt_system, road_closure_prompt_user, road_closure_prompt_system, electric_incident_prompt_user, electric_incident_prompt_system
+from dotenv import load_dotenv
 from openai import OpenAI
-from pydantic import BaseModel, ValidationError
 
-# Load environment variables from a .env file at project root
+from pydantic import ValidationError
+from models import RoadClosure, UtilityIncident, ReservoirData, OutputItem, RoadClosureData, ElectricIncidentData
 load_dotenv()
-
-# 1. Define Pydantic models matching your desired schema
-class RoadClosure(BaseModel):
-    coordinates: List[float]
-    summary: str
-
-class UtilityIncident(BaseModel):
-    coordinates: List[float]
-    summary: str
-
-class RiverLevelHeight(BaseModel):
-    max_height: Optional[float]
-    current_height: Optional[float]
-
-class ReservoirData(BaseModel):
-    reservoir_name:       Optional[str]
-    reservoir_location:   Optional[List[float]]
-    reservoir_levels:     Optional[float]
-    river_level_height:   Optional[RiverLevelHeight]
-
-class OutputItem(BaseModel):
-    road_closures: Optional[List[RoadClosure]]
-    reservoir_levels: Optional[List[ReservoirData]]
-    utility_incidents: Optional[List[UtilityIncident]]
-    population: Optional[Dict[str, int]]
-    river_level_height: Optional[RiverLevelHeight]
 
 # Configure logging
 typing_logging = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-OUTPUT_SCHEMA = {
+OUTPUT_SCHEMA_RESERVOIR = {
     "type": "object",
     "properties": {
         "data": {
@@ -69,14 +42,77 @@ OUTPUT_SCHEMA = {
                         },
                         "required": ["max_height", "current_height"],
                         "additionalProperties": False
-                    }
+                    },
+                    "url": {
+                        "type": ["string","null"],
+                        "description": "link to the official reservoir page or null"
+                    },
                 },
                 "required": [
                     "reservoir_name",
                     "reservoir_location",
                     "reservoir_levels",
-                    "river_level_height"
+                    "river_level_height",
+                    "url"
                 ],
+                "additionalProperties": False
+            }
+        }
+    },
+    "required": ["data"],
+    "additionalProperties": False
+}
+
+ROAD_CLOSURE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "coordinates": {
+                        "type": ["array", "null"],
+                        "items": { "type": "number" },
+                        "description": "[lng, lat] or null"
+                    },
+                    "summary": {
+                        "type": ["string", "null"],
+                        "description": "short description of closure or null"
+                    }
+                },
+                "required": ["coordinates", "summary"],
+                "additionalProperties": False
+            }
+        }
+    },
+    "required": ["data"],
+    "additionalProperties": False
+}
+
+ELECTRIC_INCIDENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "coordinates": {
+                        "type": ["array", "null"],
+                        "items": { "type": "number" },
+                        "description": "[lng, lat] or null"
+                    },
+                    "summary": {
+                        "type": ["string", "null"],
+                        "description": "short description or null"
+                    },
+                    "url": {
+                        "type": ["string", "null"],
+                        "description": "link to the official incident page or null"
+                    }
+                },
+                "required": ["coordinates", "summary", "url"],
                 "additionalProperties": False
             }
         }
@@ -113,6 +149,8 @@ def fetch_reservoir_data(
         logging.info(f"Requesting data with model {model} for prompt: {user_prompt[:50]}...")
         response = client.responses.create(
             model=model,
+            tools=[{"type": "web_search", 
+                    "user_location": { "type": "approximate", "city": "Valencia", "region": "Valencia" }}], 
             input=[
                 {"role": "system", "content": water_reservoir_prompt_system},
                 {"role": "user", "content": user_prompt}
@@ -121,10 +159,10 @@ def fetch_reservoir_data(
                 "format": {
                     "type": "json_schema",
                     "name": "reservoir_data",
-                    "schema": OUTPUT_SCHEMA,
+                    "schema": OUTPUT_SCHEMA_RESERVOIR,
                     "strict": True
                 }
-            }
+            }                          
         )
     except Exception as e:
         logging.error(f"OpenAI API call failed: {e}")
@@ -160,6 +198,8 @@ def fetch_road_closures(
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     resp = client.responses.create(
       model=model,
+      tools=[{"type": "web_search", 
+              "user_location": { "type": "approximate", "city": "Valencia", "region": "Valencia" }}], 
       input=[
         {"role":"system","content": road_closure_prompt_system},
         {"role":"user",  "content": user_prompt}
@@ -175,9 +215,38 @@ def fetch_road_closures(
     records = payload["data"]
     return [RoadClosureData.model_validate(r) for r in records]
 
+def fetch_electric_incidents(
+    model: str = "gpt-4.1-mini-2025-04-14",
+    openai_api_key: Optional[str] = None
+) -> List[ElectricIncidentData]:
+    openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=openai_api_key)
+    logging.info("Requesting electric incident data…")
+    response = client.responses.create(
+        model="gpt-4.1-mini-2025-04-14",
+            tools=[{"type": "web_search", 
+                    "user_location": { "type": "approximate", "city": "Valencia", "region": "Valencia" }}], 
+            input=[
+            {"role":"system","content": electric_incident_prompt_system},
+            {"role":"user",  "content": electric_incident_prompt_user}
+            ],
+            text={
+            "format": {
+                "type":   "json_schema",
+                "name":   "electric_incident_data",
+                "schema": ELECTRIC_INCIDENT_SCHEMA,
+                "strict": True
+            }
+            }
+        )
+
+    payload = json.loads(response.output_text)
+    records = payload["data"]
+    return [ElectricIncidentData.model_validate(r) for r in records]
+
 if __name__ == "__main__":
     try:
-        items = fetch_re()
+        items = fetch_reservoir_data()
         logging.info(f"Fetched {len(items)} items.")
         for item in items:
             print(item.model_dump_json(indent=2))
