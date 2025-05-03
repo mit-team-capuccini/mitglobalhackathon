@@ -6,3 +6,4 @@ __pycache__/
 *.pyw
 *.pyz
 
+backend/government_crawler/utils/.env
