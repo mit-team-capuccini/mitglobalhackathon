@@ -24,10 +24,8 @@ def get_coordinates(municipality_name, api_key):
             location = data['results'][0]['geometry']['location']
             return f"{location['lat']},{location['lng']}"
         else:
-            print(f"Error geocoding: {data['status']}")
             return None
     else:
-        print(f"Error fetching coordinates: {response.status_code}")
         return None
 
 # Function to get critical infrastructure (buildings) in a city
@@ -48,7 +46,6 @@ def get_critical_buildings(api_key, location, radius=1000):
     
     # Make a separate request for each type
     for place_type in types:
-        print(f"Searching for {place_type}...")
         next_page_token = None
         
         # Build the initial request parameters
@@ -84,10 +81,8 @@ def get_critical_buildings(api_key, location, radius=1000):
                     if not next_page_token:
                         break
                 else:
-                    print(f"Error in API response for {place_type}: {data['status']}")
                     break
             else:
-                print(f"Error fetching data for {place_type}: {response.status_code}")
                 break
         
         # Wait a short time between different type requests to avoid rate limiting
@@ -123,13 +118,11 @@ def save_to_mongodb(places, location, radius, municipality_name):
         
         # Insert the document
         result = collection.insert_one(document)
-        print(f"Successfully saved data with ID: {result.inserted_id}")
         
         # Close the connection
         client.close()
         return True
     except Exception as e:
-        print(f"Error saving to MongoDB: {str(e)}")
         return False
 
 # Example usage
@@ -139,7 +132,6 @@ radius = 15000  # Search radius in meters
 
 # Get coordinates for the municipality
 location = get_coordinates(municipality_name, api_key)
-print(f"Location: {location}")
 
 if location:
     # Get the critical buildings
@@ -148,11 +140,3 @@ if location:
     if critical_buildings:
         # Save to MongoDB
         save_to_mongodb(critical_buildings, location, radius, municipality_name)
-        
-        # Print summary
-        print(f"Found {len(critical_buildings)} critical buildings in {municipality_name}")
-        print("Data has been saved to MongoDB")
-    else:
-        print("No critical buildings found.")
-else:
-    print("Could not find coordinates for the specified municipality.")

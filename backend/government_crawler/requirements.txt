@@ -1,5 +1,0 @@
-openai
-pydantic
-pymongo # For MongoDB interaction
-python-dotenv # For loading .env files
-# Add other dependencies here if any 
