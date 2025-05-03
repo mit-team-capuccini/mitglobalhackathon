@@ -83,9 +83,17 @@ interface SocialMediaPost {
   };
 }
 
-// Placeholder types
-type GeoJsonFeature = any; // Using any for now, refine if possible
-// type MapData = any; // Removed, heatmapData state removed
+// START: Define Article Type (matching View2 fetch)
+interface Article {
+  url: string;
+  title: string;
+  date: string; // Assuming date is string from API
+  translated_title?: string;
+}
+// END: Define Article Type
+
+// Removed unused GeoJsonFeature type
+// type GeoJsonFeature = any; 
 
 // Mock Data for Charts
 const mockReservoirTrendData = [
@@ -134,7 +142,6 @@ export function View1() {
   // --- Map View State --- 
   const mapCenter = { lat: 39.4699, lng: -0.3763 };
   const mapZoom = 12;
-  const selectedMunicipality: GeoJsonFeature | null = null;
 
   // --- Fetched Data State (Lifted from GoogleMapCard) ---
   const [municipalitySummary, setMunicipalitySummary] = useState<MunicipalitySummary | null>(null);
@@ -148,13 +155,12 @@ export function View1() {
   const [reservoirLevels, setReservoirLevels] = useState<ReservoirLevel[]>([]);
   const [reservoirLoading, setReservoirLoading] = useState(false);
   const [reservoirError, setReservoirError] = useState<string | null>(null);
-  const [articles, setArticles] = useState<any[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [articlesError, setArticlesError] = useState<string | null>(null);
   const [socialMediaPostsData, setSocialMediaPostsData] = useState<SocialMediaPost[]>([]);
 
   // --- Static/Mock Data State --- 
-  const polygonData: GeoJsonFeature[] = [];
   const [mockTouristEstimate] = useState(15000);
   const [mockInfraStatus] = useState("Partially Degraded");
   const [mockAffectedPopulation] = useState(45000);
@@ -185,12 +191,12 @@ export function View1() {
   const toggleSocialMediaPins = useCallback(() => setShowSocialMediaPins((v) => !v), []);
 
   // --- Map Interaction Handlers (Refined types) --- 
-  const handleBoundsChanged = useCallback((bounds: google.maps.LatLngBounds | null ) => {
+  const handleBoundsChanged: (bounds: google.maps.LatLngBounds | null) => void = useCallback((bounds) => {
     if (!bounds) return;
-    console.log('Bounds changed:', bounds.toJSON());
+    console.log('Bounds changed:', bounds.toJSON()); 
   }, []);
 
-  const handleMapClick = useCallback((point: { lat: number; lng: number }) => {
+  const handleMapClick: (point: { lat: number; lng: number }) => void = useCallback((point) => {
     console.log('Map clicked:', point);
   }, []);
 

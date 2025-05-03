@@ -355,10 +355,8 @@ export function GoogleMapCard({
         clearDataLayer();
         try {
             console.log(`Data Layer Effect: Loading GeoJSON from URL: ${GEOJSON_URL}`);
-            // Removed @ts-expect-error as it might not be needed or handled elsewhere
-            // The map.data object might be extended by libraries, making loadGeoJson valid at runtime.
-            // If this still causes type errors, further investigation on library versions/types is needed.
-            (map.data as any).loadGeoJson(GEOJSON_URL); // Use type assertion as a temporary workaround if needed
+            // We attempt the call directly. If the build fails here, it confirms a type discrepancy.
+            map.data.loadGeoJson(GEOJSON_URL); 
             console.log('Data Layer Effect: loadGeoJson called with URL.');
 
             const addFeatureListener = map.data.addListener('addfeature', () => { // Removed unused 'event' param

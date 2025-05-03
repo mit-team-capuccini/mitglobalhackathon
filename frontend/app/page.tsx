@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link'; // Import NextLink for client-side navigation
 import {
   Container,
   Title,
@@ -9,9 +10,7 @@ import {
   Badge,
   Group,
   Anchor,
-  useMantineTheme,
 } from '@mantine/core';
-import Link from 'next/link'; // Import NextLink for client-side navigation
 
 // Mock data for disasters
 const disasters = [
@@ -57,7 +56,6 @@ const getSeverityColor = (severity: string) => {
 };
 
 export default function HomePage() {
-  const theme = useMantineTheme();
 
   return (
     <Container size="lg" my="xl">
