@@ -1,9 +1,9 @@
-from utils.search_and_process import fetch_reservoir_data, fetch_road_closures, fetch_electric_incidents
+from government_crawler.utils.search_and_process import fetch_reservoir_data, fetch_road_closures, fetch_electric_incidents
 import json
 from pydantic import ValidationError
 import logging
-from utils.database import save_output_items
-from utils.models import OutputItem
+from government_crawler.utils.database import save_output_items
+from government_crawler.utils.models import OutputItem
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
