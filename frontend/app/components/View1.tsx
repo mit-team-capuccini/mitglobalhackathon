@@ -34,7 +34,7 @@ export function View1() {
       <Grid.Col span={4}>
         <Stack gap="md">
           {/* Info Card */}
-          <Card padding="lg" radius="lg" withBorder bg="gray.1">
+          <Card padding="lg" radius="lg" bg="gray.3">
             <Stack>
               <Title order={4}>Info Panel</Title>
               <Text>Info 1: Some detail</Text>
@@ -44,7 +44,7 @@ export function View1() {
           </Card>
 
           {/* Task List Card */}
-          <Card padding="lg" radius="lg" withBorder bg="gray.1">
+          <Card padding="lg" radius="lg" bg="gray.3">
             <Stack>
               <Title order={4}>Task List</Title>
               <List
@@ -52,7 +52,7 @@ export function View1() {
                 size="sm"
                 center
                 icon={
-                  <ThemeIcon color="yellow" size={24} radius="xl">
+                  <ThemeIcon size={24} radius="xl">
                     <IconCircleCheck size="1rem" />
                   </ThemeIcon>
                 }

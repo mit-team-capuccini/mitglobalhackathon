@@ -9,6 +9,9 @@ import {
 } from '@mantine/core';
 import { GoogleMap, useJsApiLoader, HeatmapLayer, MarkerF, InfoWindowF } from '@react-google-maps/api';
 
+// Import data service functions
+import { getDemoHeatmapData, getDemoPopulationGeoJson } from '../services/mapDataService';
+
 const containerStyle = {
   width: '100%',
   height: '100%'
@@ -19,68 +22,7 @@ const center = {
   lng: -0.3763
 };
 
-// Sample heatmap data with weights
-const heatmapData = [
-  { lat: 39.47, lng: -0.37, weight: 1 },
-  { lat: 39.471, lng: -0.375, weight: 1 },
-  { lat: 39.469, lng: -0.378, weight: 1 },
-  { lat: 39.472, lng: -0.372, weight: 1 },
-  { lat: 39.468, lng: -0.38, weight: 1 },
-];
-
-// Remove static schoolData if not needed or keep if needed alongside population
-
 const libraries = ['visualization', 'places'];
-
-// --- Demo Population GeoJSON Data ---
-const demoPopulationGeoJson = {
-  type: 'FeatureCollection',
-  features: [
-    {
-      type: 'Feature',
-      properties: { population_density: 500 }, // Low density
-      geometry: {
-        type: 'Polygon',
-        coordinates: [[ // Approx polygon 1 (adjust coordinates as needed)
-          [-0.38, 39.47],
-          [-0.37, 39.47],
-          [-0.37, 39.46],
-          [-0.38, 39.46],
-          [-0.38, 39.47]
-        ]]
-      }
-    },
-    {
-      type: 'Feature',
-      properties: { population_density: 5000 }, // Medium density
-      geometry: {
-        type: 'Polygon',
-        coordinates: [[ // Approx polygon 2
-          [-0.37, 39.47],
-          [-0.36, 39.47],
-          [-0.36, 39.46],
-          [-0.37, 39.46],
-          [-0.37, 39.47]
-        ]]
-      }
-    },
-    {
-      type: 'Feature',
-      properties: { population_density: 15000 }, // High density
-      geometry: {
-        type: 'Polygon',
-        coordinates: [[ // Approx polygon 3
-          [-0.38, 39.48],
-          [-0.37, 39.48],
-          [-0.37, 39.47],
-          [-0.38, 39.47],
-          [-0.38, 39.48]
-        ]]
-      }
-    }
-  ]
-};
-// --- End Demo Data ---
 
 // Define map options to disable controls
 const mapOptions = {
@@ -130,11 +72,19 @@ interface School {
   vicinity: string; // Address snippet
 }
 
+// Type for storing clicked polygon info
+interface ClickedDensityInfo {
+  density: number;
+  position: google.maps.LatLng;
+}
+
 export function GoogleMapCard() {
   // State for map instance, schools, and selected school
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  // State for clicked polygon info
+  const [clickedDensityInfo, setClickedDensityInfo] = useState<ClickedDensityInfo | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -142,15 +92,18 @@ export function GoogleMapCard() {
     libraries: libraries as Array<"drawing" | "geometry" | "places" | "visualization">
   })
 
+  // --- Heatmap Points Calculation ---
   const heatmapPoints = React.useMemo(() => {
-    if (!isLoaded || typeof window === 'undefined' || !window.google || !window.google.maps || !window.google.maps.visualization) {
+    if (!isLoaded || typeof window === 'undefined' || !window.google?.maps?.visualization) {
       return [];
     }
-    return heatmapData.map(point => ({
+    const data = getDemoHeatmapData(); // Get data from service
+    return data.map(point => ({
       location: new window.google.maps.LatLng(point.lat, point.lng),
       weight: point.weight
     }));
   }, [isLoaded]);
+  // --- End Heatmap Points ---
 
   // Define red marker icon using Symbol
   const redMarkerIcon = React.useMemo(() => {
@@ -205,41 +158,69 @@ export function GoogleMapCard() {
     });
   }, [isLoaded, map]); // Rerun when map or isLoaded changes
 
-  // --- Data Layer Styling Function (Simplified for Debugging) ---
+  // --- Data Layer Styling Function (Density-based, no stroke) ---
   const styleDataLayer = useCallback((feature: google.maps.Data.Feature) => {
-    console.log('Styling feature:', feature.getId()); // Log which feature is being styled
+    const density = Number(feature.getProperty('population_density')) || 0;
+    let fillColor = '#FFFFE0'; // Light Yellow (Low density)
+
+    if (density > 10000) {
+      fillColor = '#FF0000'; // Red (High density)
+    } else if (density > 3000) {
+      fillColor = '#FFA500'; // Orange (Medium density)
+    }
+
+    // console.log(`Styling feature ${feature.getId()}: density=${density}, color=${fillColor}`); // Optional logging
+
     return {
-      fillColor: 'blue',    // Simple, solid color
-      strokeWeight: 2,      // Visible border
-      strokeColor: '#000000', // Black border
-      fillOpacity: 0.5      // Semi-transparent
+      fillColor: fillColor,
+      strokeWeight: 0,      // Remove border
+      fillOpacity: 0.65     // Keep semi-transparent
     };
   }, []);
   // --- End Styling Function ---
 
   // --- Effect for Data Layer ---
   useEffect(() => {
-    if (!map || typeof window === 'undefined' || !window.google || !window.google.maps.Data) {
-        console.log('Data Layer Effect: Map not ready or Data API unavailable');
+    if (!map || typeof window === 'undefined' || !window.google?.maps?.Data) {
+        console.log('Data Layer Effect: Map not ready or google.maps.Data constructor unavailable');
         return;
     }
-    console.log('Data Layer Effect: Running with map instance:', map);
+    console.log('Data Layer Effect: Running with map instance and Data constructor available');
 
-    // Clear previous data features
     map.data.forEach(feature => map.data.remove(feature));
     console.log('Data Layer Effect: Cleared previous features');
 
     try {
-        // Load the demo GeoJSON data
-        console.log('Data Layer Effect: Loading GeoJSON...');
-        // @ts-ignore - Bypassing incorrect type definition
-        const features = map.data.loadGeoJson(demoPopulationGeoJson);
-        console.log('Data Layer Effect: Loaded features:', features); // Log loaded features
+        const populationData = getDemoPopulationGeoJson(); // Get data from service
+        const geoJsonDataUrl = `data:application/json;charset=UTF-8,${encodeURIComponent(
+          JSON.stringify(populationData)
+        )}`;
+        console.log('Data Layer Effect: Loading GeoJSON via Data URL...');
 
-        // Apply styling
+        // Load the GeoJSON using the Data URL
+        // Remove the @ts-ignore as we are now passing a string
+        const features = map.data.loadGeoJson(geoJsonDataUrl);
+        // Note: loadGeoJson might still return undefined immediately when loading from URL,
+        // features are added asynchronously. We rely on the feature count check later.
+        console.log('Data Layer Effect: loadGeoJson called with Data URL.');
+
+        // Check feature count (might need a slight delay or event listener for URL loading)
+        // For simplicity, we'll keep the immediate check, but be aware it might log 0 initially.
+        let featureCount = 0;
+        map.data.forEach(() => featureCount++);
+        console.log(`Data Layer Effect: Feature count on map.data immediately after load call: ${featureCount}`);
+
+        // Apply styling (This might need to be tied to a 'addfeature' event listener
+        // when loading from URL, but let's try applying it directly first)
         console.log('Data Layer Effect: Applying style...');
         map.data.setStyle(styleDataLayer);
         console.log('Data Layer Effect: Style applied.');
+
+        // Add a listener to log when features ARE actually added from the URL
+        const addFeatureListener = map.data.addListener('addfeature', (event: google.maps.Data.AddFeatureEvent) => {
+            console.log('Data Layer Effect: Feature added:', event.feature.getId());
+            // Optionally re-apply styles here if needed
+        });
 
         // Add mouseover/mouseout effects
         const mouseoverListener = map.data.addListener('mouseover', (event: google.maps.Data.MouseEvent) => {
@@ -249,12 +230,25 @@ export function GoogleMapCard() {
             map.data.revertStyle();
         });
 
+        // Add click listener for data layer features
+        const clickListener = map.data.addListener('click', (event: google.maps.Data.MouseEvent) => {
+            const feature = event.feature;
+            const density = Number(feature.getProperty('population_density')) || 0;
+            const position = event.latLng;
+            if (position) {
+                console.log(`Clicked feature ID: ${feature.getId()}, Density: ${density}, Position:`, position.toJSON());
+                setClickedDensityInfo({ density, position });
+            }
+        });
+
         // Cleanup function
         return () => {
             console.log('Data Layer Effect: Cleaning up...');
             if (map && google.maps.event) {
+                if(addFeatureListener) google.maps.event.removeListener(addFeatureListener);
                 if(mouseoverListener) google.maps.event.removeListener(mouseoverListener);
                 if(mouseoutListener) google.maps.event.removeListener(mouseoutListener);
+                if(clickListener) google.maps.event.removeListener(clickListener); // Cleanup click listener
                 map.data.forEach(feature => {
                     try { map.data.remove(feature); } catch (e) { /* ignore */ }
                 });
@@ -262,7 +256,7 @@ export function GoogleMapCard() {
             console.log('Data Layer Effect: Cleanup complete.');
         };
     } catch (error) {
-        console.error('Data Layer Effect: Error loading or styling GeoJSON:', error);
+        console.error('Data Layer Effect: Error during load/style:', error);
     }
 
   }, [map, styleDataLayer]);
@@ -279,7 +273,7 @@ export function GoogleMapCard() {
   }
 
   return (
-    <Card padding={0} radius="lg" withBorder bg="gray.1" h={400}>
+    <Card padding={0} radius="lg" bg="gray.3" h={400}>
       {isLoaded ? (
         <GoogleMap
           mapContainerStyle={containerStyle}
@@ -289,12 +283,13 @@ export function GoogleMapCard() {
           onLoad={onLoad} // Set map instance on load
           onUnmount={onUnmount} // Clear map instance on unmount
         >
-          {heatmapPoints.length > 0 && (
+          {/* Temporarily comment out HeatmapLayer */}
+          {/* {heatmapPoints.length > 0 && (
              <HeatmapLayer
                data={heatmapPoints}
                options={heatmapOptions}
              />
-          )}
+          )} */}
 
           {/* School Markers - Use fetched schools data */}
           {redMarkerIcon && schools.map(school => (
@@ -316,6 +311,19 @@ export function GoogleMapCard() {
               <div>
                 <h4>{selectedSchool.name}</h4>
                 <p>{selectedSchool.vicinity}</p> {/* Display address snippet */}
+              </div>
+            </InfoWindowF>
+          )}
+
+          {/* Density Info Window */}
+          {clickedDensityInfo && (
+            <InfoWindowF
+              position={clickedDensityInfo.position}
+              onCloseClick={() => setClickedDensityInfo(null)} // Hide on close
+            >
+              <div>
+                <h4>Population Density</h4>
+                <p>{clickedDensityInfo.density.toLocaleString()} people / km² (demo)</p>
               </div>
             </InfoWindowF>
           )}
