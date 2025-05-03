@@ -16,23 +16,23 @@ class RoadClosure(BaseModel):
     coordinates: List[float]
     summary: str
 
-class ReservoirLevel(BaseModel):
-    coordinates: List[float]
-    level: float
-
 class UtilityIncident(BaseModel):
     coordinates: List[float]
     summary: str
 
 class RiverLevelHeight(BaseModel):
-    name_of_river: str
-    max_height: Optional[float] = None
-    current_height: Optional[float] = None
-    percent: Optional[float] = None
+    max_height: Optional[float]
+    current_height: Optional[float]
+
+class ReservoirData(BaseModel):
+    reservoir_name:       Optional[str]
+    reservoir_location:   Optional[List[float]]
+    reservoir_levels:     Optional[float]
+    river_level_height:   Optional[RiverLevelHeight]
 
 class OutputItem(BaseModel):
     road_closures: Optional[List[RoadClosure]]
-    reservoir_levels: Optional[List[ReservoirLevel]]
+    reservoir_levels: Optional[List[ReservoirData]]
     utility_incidents: Optional[List[UtilityIncident]]
     population: Optional[Dict[str, int]]
     river_level_height: Optional[RiverLevelHeight]
@@ -41,26 +41,55 @@ class OutputItem(BaseModel):
 typing_logging = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Derive JSON schema for OutputItem list using Pydantic v2 model_json_schema()
-ITEM_SCHEMA = OutputItem.model_json_schema()
-ITEM_SCHEMA["additionalProperties"] = False
 OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
         "data": {
             "type": "array",
-            "items": ITEM_SCHEMA
+            "items": {
+                "type": "object",
+                "properties": {
+                    "reservoir_name": {
+                        "type": ["string", "null"]
+                    },
+                    "reservoir_location": {
+                        "type": ["array", "null"],
+                        "items": { "type": "number" },
+                        "description": "[latitude, longitude] or null"
+                    },
+                    "reservoir_levels": {
+                        "type": ["number", "null"],
+                        "description": "level in %"
+                    },
+                    "river_level_height": {
+                        "type": ["object", "null"],
+                        "properties": {
+                            "max_height":     { "type": ["number", "null"] },
+                            "current_height": { "type": ["number", "null"] }
+                        },
+                        "required": ["max_height", "current_height"],
+                        "additionalProperties": False
+                    }
+                },
+                "required": [
+                    "reservoir_name",
+                    "reservoir_location",
+                    "reservoir_levels",
+                    "river_level_height"
+                ],
+                "additionalProperties": False
+            }
         }
     },
     "required": ["data"],
     "additionalProperties": False
 }
 
-def fetch_government_data(
+def fetch_reservoir_data(
      user_prompt: str = water_reservoir_prompt_user,
      model: str = "gpt-4.1-mini-2025-04-14", # Using a model known to support json_schema
      openai_api_key: Optional[str] = None
-) -> List[OutputItem]:
+) -> List[ReservoirData]:
     """Fetch structured government data based on a user prompt, returning JSON matching a predefined schema.
 
     Args:
@@ -75,12 +104,7 @@ def fetch_government_data(
         ValueError: if API key is missing.
         RuntimeError: if API call or JSON parsing/validation fails.
     """
-    # Get or validate API key
-    if openai_api_key is None:
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-    if not openai_api_key:
-        logging.error("OpenAI API key not found in environment variables.")
-        raise ValueError("OpenAI API key not provided.")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
 
     client = OpenAI(api_key=openai_api_key)
 
@@ -96,7 +120,7 @@ def fetch_government_data(
             text={
                 "format": {
                     "type": "json_schema",
-                    "name": "government_data",
+                    "name": "reservoir_data",
                     "schema": OUTPUT_SCHEMA,
                     "strict": True
                 }
@@ -116,14 +140,9 @@ def fetch_government_data(
 
     # Parse and validate JSON with Pydantic
     try:
-        # Load the JSON object, expect it to have a 'data' array
         payload = json.loads(assistant_json)
-        if not isinstance(payload, dict) or 'data' not in payload:
-            logging.error("Expected top-level object with 'data' field in API response. Got: %s", payload)
-            raise RuntimeError("Invalid API response structure: 'data' property missing.")
-
         records = payload['data']
-        validated_items = [OutputItem.parse_obj(item) for item in records]
+        validated_items = [ReservoirData.model_validate(item) for item in records]
         logging.info(f"Successfully parsed %d items.", len(validated_items))
         return validated_items
     except json.JSONDecodeError as e:
@@ -133,13 +152,35 @@ def fetch_government_data(
         logging.error(f"Structured data validation failed: {e}. Response was: {assistant_json}")
         raise RuntimeError("Structured data validation failed") from e
 
+def fetch_road_closures(
+    user_prompt: str = road_closure_prompt_user,
+    model: str       = "gpt-4.1-mini-2025-04-14",
+    openai_api_key: Optional[str] = None
+) -> List[RoadClosureData]:
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    resp = client.responses.create(
+      model=model,
+      input=[
+        {"role":"system","content": road_closure_prompt_system},
+        {"role":"user",  "content": user_prompt}
+      ],
+      text={"format":{
+          "type":   "json_schema",
+          "name":   "road_closure_data",
+          "schema": ROAD_CLOSURE_SCHEMA,
+          "strict": True
+      }}
+    )
+    payload = json.loads(resp.output_text)
+    records = payload["data"]
+    return [RoadClosureData.model_validate(r) for r in records]
 
 if __name__ == "__main__":
     try:
-        items = fetch_government_data()
+        items = fetch_re()
         logging.info(f"Fetched {len(items)} items.")
         for item in items:
-            print(item.json(indent=2))
+            print(item.model_dump_json(indent=2))
     except (ValueError, RuntimeError) as e:
         logging.error(f"Error in main execution: {e}")
     except Exception as e:

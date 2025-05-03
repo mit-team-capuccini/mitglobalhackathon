@@ -14,3 +14,4 @@ output only a JSON array in this exact form:
     "max_height": <meters>,
     "current_height": <meters>
   } | null"""
+
