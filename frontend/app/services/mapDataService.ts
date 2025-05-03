@@ -68,4 +68,45 @@ const demoPopulationGeoJson = {
 export const getDemoPopulationGeoJson = () => {
     // In the future, this could fetch data from an API or file
     return demoPopulationGeoJson;
+};
+
+// --- School Interface (Exported) ---
+export interface School {
+    place_id: string;
+    name: string;
+    geometry: {
+      location: { lat: number; lng: number };
+    };
+    vicinity: string;
+}
+
+// --- Mock School Data (Used by exported function) ---
+const mockSchoolData: School[] = [
+    {
+        place_id: 'mock_school_1',
+        name: 'IES Lluís Vives (Mock)',
+        geometry: { location: { lat: 39.4675, lng: -0.3755 } },
+        vicinity: 'Av. de Xàtiva, Valencia (Mock)'
+    },
+    {
+        place_id: 'mock_school_2',
+        name: 'Colegio Salesiano San Juan Bosco (Mock)',
+        geometry: { location: { lat: 39.4788, lng: -0.3495 } },
+        vicinity: 'Av. de la Plata, Valencia (Mock)'
+    },
+    {
+        place_id: 'mock_school_3',
+        name: 'CEIP Jaume I (Mock)',
+        geometry: { location: { lat: 39.4618, lng: -0.3812 } },
+        vicinity: 'Carrer de Quart, Valencia (Mock)'
+    }
+];
+
+// --- School Data Fetching (Exported, returns mock data) ---
+export const fetchNearbySchools = async (
+    _service?: google.maps.places.PlacesService,
+    _request?: google.maps.places.PlaceSearchRequest
+): Promise<School[]> => {
+    console.log('mapDataService: Returning MOCK school data.');
+    return Promise.resolve(mockSchoolData);
 }; 

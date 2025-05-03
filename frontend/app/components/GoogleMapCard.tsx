@@ -9,8 +9,8 @@ import {
 } from '@mantine/core';
 import { GoogleMap, useJsApiLoader, HeatmapLayer, MarkerF, InfoWindowF } from '@react-google-maps/api';
 
-// Import data service functions
-import { getDemoHeatmapData, getDemoPopulationGeoJson } from '../services/mapDataService';
+// Correct imports from service
+import { getDemoHeatmapData, fetchNearbySchools, School } from '../services/mapDataService';
 
 const containerStyle = {
   width: '100%',
@@ -62,33 +62,33 @@ const heatmapOptions = {
   dissipating: true, // Set dissipating to true
 };
 
-<<<<<<< HEAD
-// Define type for School results (simplified)
-interface School {
-  place_id: string;
-  name: string;
-  geometry: {
-    location: google.maps.LatLng;
-  };
-  vicinity: string; // Address snippet
-}
-=======
-// --- Constants for property names (Adjust if needed based on data) ---
-const POPULATION_PROPERTY = 'PAD_2C02'; // Assumed total population property
-const AREA_PROPERTY = 'Shape__Area'; // Area property (assumed sq meters)
-const NAME_PROPERTY = 'Texto'; // Municipality name property
-
-// --- GeoJSON File Path (in /public directory) ---
-const GEOJSON_URL = '/CensusSpain.geojson'; // Corrected filename
->>>>>>> e2eda12 (test)
+// --- Reinstate Constants for property names ---
+const POPULATION_PROPERTY = 'PAD_2C02';
+const AREA_PROPERTY = 'Shape__Area';
+const NAME_PROPERTY = 'Texto';
+const GEOJSON_URL = '/CensusSpain.geojson'; // Keep corrected filename
 
 // Type for storing clicked polygon info
 interface ClickedDensityInfo {
   density: number;
   position: google.maps.LatLng;
+  name: string;
 }
 
-export function GoogleMapCard() {
+// Add visibility props
+interface GoogleMapCardProps {
+  showSchools: boolean;
+  showDensity: boolean;
+  showHeatmap: boolean;
+  onRegionClick?: (region: { name: string; density: number }) => void; // Keep if needed
+}
+
+export function GoogleMapCard({ // Destructure new props
+  showSchools,
+  showDensity,
+  showHeatmap,
+  onRegionClick
+}: GoogleMapCardProps) {
   // State for map instance, schools, and selected school
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [schools, setSchools] = useState<School[]>([]);
@@ -140,7 +140,7 @@ export function GoogleMapCard() {
     setMap(null);
   }, []);
 
-  // Effect to fetch schools when map is loaded
+  // --- Effect for fetching schools ---
   useEffect(() => {
     if (!isLoaded || !map || typeof window === 'undefined' || !window.google || !window.google.maps.places) {
       return;
@@ -153,124 +153,119 @@ export function GoogleMapCard() {
       type: 'school',
     };
 
-    service.nearbySearch(request, (results, status) => {
-      if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-        // Filter out results without geometry or location
-        const validSchools = results.filter(
-            (result): result is google.maps.places.PlaceResult & { geometry: { location: google.maps.LatLng }, vicinity: string } =>
-                !!result.geometry?.location && !!result.vicinity && !!result.place_id
-        );
-        setSchools(validSchools as School[]); // Update state with fetched schools
-      } else {
-        console.error(`Places search failed: ${status}`);
-        setSchools([]); // Clear schools on error
+    const loadSchools = async () => {
+      try {
+        const fetchedSchools = await fetchNearbySchools(service, request);
+        setSchools(fetchedSchools);
+      } catch (error) {
+        console.error("Error fetching schools from service:", error);
+        setSchools([]);
       }
-    });
-  }, [isLoaded, map]); // Rerun when map or isLoaded changes
+    };
+    loadSchools();
+  }, [isLoaded, map]);
+  // --- End school fetching effect ---
 
-  // --- Data Layer Styling Function (Density-based, no stroke) ---
+  // --- Data Layer Styling Function (Refined Density Scale) ---
   const styleDataLayer = useCallback((feature: google.maps.Data.Feature) => {
-    const density = Number(feature.getProperty('population_density')) || 0;
-    let fillColor = '#FFFFE0'; // Light Yellow (Low density)
-
-    if (density > 10000) {
-      fillColor = '#FF0000'; // Red (High density)
-    } else if (density > 3000) {
-      fillColor = '#FFA500'; // Orange (Medium density)
+    const population = Number(feature.getProperty(POPULATION_PROPERTY)) || 0;
+    const areaSqMeters = Number(feature.getProperty(AREA_PROPERTY)) || 0;
+    let density = 0;
+    if (areaSqMeters > 0) {
+        density = population / (areaSqMeters / 1_000_000); // Density per km²
     }
 
-    // console.log(`Styling feature ${feature.getId()}: density=${density}, color=${fillColor}`); // Optional logging
+    // Refined 5-step color scale (adjust thresholds/colors as needed)
+    let fillColor = '#FFFFE0'; // Very Low (< 50)
+    if (density > 3000) {
+      fillColor = '#BD0026'; // Very High (> 3000)
+    } else if (density > 1000) {
+      fillColor = '#F03B20'; // High (1000-3000)
+    } else if (density > 250) {
+      fillColor = '#FD8D3C'; // Medium (250-1000)
+    } else if (density > 50) {
+      fillColor = '#FECC5C'; // Low (50-250)
+    }
 
     return {
       fillColor: fillColor,
-      strokeWeight: 0,      // Remove border
-      fillOpacity: 0.65     // Keep semi-transparent
+      strokeWeight: 0,      // No border
+      fillOpacity: 0.50     // Slightly increased opacity
     };
   }, []);
   // --- End Styling Function ---
 
-  // --- Effect for Data Layer ---
+  // --- Effect for Data Layer (Conditional) ---
   useEffect(() => {
     if (!map || typeof window === 'undefined' || !window.google?.maps?.Data) {
-        console.log('Data Layer Effect: Map not ready or google.maps.Data constructor unavailable');
         return;
     }
-    console.log('Data Layer Effect: Running with map instance and Data constructor available');
 
-    map.data.forEach(feature => map.data.remove(feature));
-    console.log('Data Layer Effect: Cleared previous features');
+    // Function to clear data layer features
+    const clearDataLayer = () => {
+        map.data.forEach(feature => map.data.remove(feature));
+        map.data.setStyle(null); // Remove styles
+        console.log('Data Layer Effect: Cleared density data');
+    };
 
-    try {
-        const populationData = getDemoPopulationGeoJson(); // Get data from service
-        const geoJsonDataUrl = `data:application/json;charset=UTF-8,${encodeURIComponent(
-          JSON.stringify(populationData)
-        )}`;
-        console.log('Data Layer Effect: Loading GeoJSON via Data URL...');
+    // If showDensity is true, load and style
+    if (showDensity) {
+        console.log('Data Layer Effect: showDensity is true, loading data...');
+        // Clear any previous features first (in case toggled quickly)
+        clearDataLayer();
+        try {
+            console.log(`Data Layer Effect: Loading GeoJSON from URL: ${GEOJSON_URL}`);
+            // @ts-ignore
+            map.data.loadGeoJson(GEOJSON_URL);
+            console.log('Data Layer Effect: loadGeoJson called with URL.');
 
-        // Load the GeoJSON using the Data URL
-        // Remove the @ts-ignore as we are now passing a string
-        const features = map.data.loadGeoJson(geoJsonDataUrl);
-        // Note: loadGeoJson might still return undefined immediately when loading from URL,
-        // features are added asynchronously. We rely on the feature count check later.
-        console.log('Data Layer Effect: loadGeoJson called with Data URL.');
+            // Add listeners when data is shown
+            const addFeatureListener = map.data.addListener('addfeature', (event: google.maps.Data.AddFeatureEvent) => {
+                console.log('Data Layer Effect: Feature added:', event.feature.getProperty(NAME_PROPERTY));
+                map.data.setStyle(styleDataLayer);
+            });
+            const mouseoverListener = map.data.addListener('mouseover', (event: google.maps.Data.MouseEvent) => {
+                map.data.overrideStyle(event.feature, { strokeWeight: 3, fillOpacity: 0.8 });
+            });
+            const mouseoutListener = map.data.addListener('mouseout', (event: google.maps.Data.MouseEvent) => {
+                map.data.revertStyle();
+            });
+            const clickListener = map.data.addListener('click', (event: google.maps.Data.MouseEvent) => {
+                const feature = event.feature;
+                const population = Number(feature.getProperty(POPULATION_PROPERTY)) || 0;
+                const areaSqMeters = Number(feature.getProperty(AREA_PROPERTY)) || 0;
+                let density = 0;
+                if (areaSqMeters > 0) { density = population / (areaSqMeters / 1_000_000); }
+                const name = feature.getProperty(NAME_PROPERTY) || 'Unknown Area';
+                onRegionClick?.({ name: name as string, density });
+            });
 
-        // Check feature count (might need a slight delay or event listener for URL loading)
-        // For simplicity, we'll keep the immediate check, but be aware it might log 0 initially.
-        let featureCount = 0;
-        map.data.forEach(() => featureCount++);
-        console.log(`Data Layer Effect: Feature count on map.data immediately after load call: ${featureCount}`);
-
-        // Apply styling (This might need to be tied to a 'addfeature' event listener
-        // when loading from URL, but let's try applying it directly first)
-        console.log('Data Layer Effect: Applying style...');
-        map.data.setStyle(styleDataLayer);
-        console.log('Data Layer Effect: Style applied.');
-
-        // Add a listener to log when features ARE actually added from the URL
-        const addFeatureListener = map.data.addListener('addfeature', (event: google.maps.Data.AddFeatureEvent) => {
-            console.log('Data Layer Effect: Feature added:', event.feature.getId());
-            // Optionally re-apply styles here if needed
-        });
-
-        // Add mouseover/mouseout effects
-        const mouseoverListener = map.data.addListener('mouseover', (event: google.maps.Data.MouseEvent) => {
-            map.data.overrideStyle(event.feature, { strokeWeight: 3, fillOpacity: 0.8 });
-        });
-        const mouseoutListener = map.data.addListener('mouseout', (event: google.maps.Data.MouseEvent) => {
-            map.data.revertStyle();
-        });
-
-        // Add click listener for data layer features
-        const clickListener = map.data.addListener('click', (event: google.maps.Data.MouseEvent) => {
-            const feature = event.feature;
-            const density = Number(feature.getProperty('population_density')) || 0;
-            const position = event.latLng;
-            if (position) {
-                console.log(`Clicked feature ID: ${feature.getId()}, Density: ${density}, Position:`, position.toJSON());
-                setClickedDensityInfo({ density, position });
-            }
-        });
-
-        // Cleanup function
-        return () => {
-            console.log('Data Layer Effect: Cleaning up...');
-            if (map && google.maps.event) {
-                if(addFeatureListener) google.maps.event.removeListener(addFeatureListener);
-                if(mouseoverListener) google.maps.event.removeListener(mouseoverListener);
-                if(mouseoutListener) google.maps.event.removeListener(mouseoutListener);
-                if(clickListener) google.maps.event.removeListener(clickListener); // Cleanup click listener
-                map.data.forEach(feature => {
-                    try { map.data.remove(feature); } catch (e) { /* ignore */ }
-                });
-            }
-            console.log('Data Layer Effect: Cleanup complete.');
-        };
-    } catch (error) {
-        console.error('Data Layer Effect: Error during load/style:', error);
+            // Return cleanup function for THIS load instance
+            return () => {
+                console.log('Data Layer Effect: Cleaning up density data and listeners...');
+                if (map && google.maps.event) {
+                    if (addFeatureListener) google.maps.event.removeListener(addFeatureListener);
+                    if (mouseoverListener) google.maps.event.removeListener(mouseoverListener);
+                    if (mouseoutListener) google.maps.event.removeListener(mouseoutListener);
+                    if (clickListener) google.maps.event.removeListener(clickListener);
+                    clearDataLayer(); // Ensure features are cleared on effect cleanup/re-run
+                }
+                console.log('Data Layer Effect: Density cleanup complete.');
+            };
+        } catch (error) {
+            console.error('Data Layer Effect: Error during load/style:', error);
+        }
+    } else {
+        // If showDensity is false, ensure the layer is cleared
+        console.log('Data Layer Effect: showDensity is false, clearing data...');
+        clearDataLayer();
     }
 
-  }, [map, styleDataLayer]);
+  }, [map, styleDataLayer, onRegionClick, showDensity]); // Add showDensity to dependency array
   // --- End Data Layer Effect ---
+
+  // Log prop value on render
+  console.log('GoogleMapCard render - showHeatmap:', showHeatmap);
 
   if (loadError) {
     return (
@@ -293,65 +288,37 @@ export function GoogleMapCard() {
           onLoad={onLoad} // Set map instance on load
           onUnmount={onUnmount} // Clear map instance on unmount
         >
-          {/* Temporarily comment out HeatmapLayer */}
-          {/* {heatmapPoints.length > 0 && (
+          {/* Conditional Heatmap Layer */}
+          {showHeatmap && heatmapPoints.length > 0 && (
              <HeatmapLayer
                data={heatmapPoints}
                options={heatmapOptions}
              />
-          )} */}
+          )}
 
-          {/* School Markers - Use fetched schools data */}
-          {redMarkerIcon && schools.map(school => (
+          {/* Conditional School Markers */}
+          {showSchools && redMarkerIcon && schools.map(school => (
             <MarkerF
               key={school.place_id}
               position={school.geometry.location}
               title={school.name}
               icon={redMarkerIcon}
-              onClick={() => setSelectedSchool(school)} // Set selected school on click
+              onClick={() => setSelectedSchool(school)}
             />
           ))}
 
-          {/* Info Window for Selected School */}
-          {selectedSchool && redMarkerIcon && (
+          {/* Info Window for Selected School (conditionally rendered with markers) */}
+          {showSchools && selectedSchool && redMarkerIcon && (
             <InfoWindowF
               position={selectedSchool.geometry.location}
-              onCloseClick={() => setSelectedSchool(null)} // Clear selection on close
+              onCloseClick={() => setSelectedSchool(null)}
             >
               <div>
                 <h4>{selectedSchool.name}</h4>
-                <p>{selectedSchool.vicinity}</p> {/* Display address snippet */}
+                <p>{selectedSchool.vicinity}</p>
               </div>
             </InfoWindowF>
           )}
-
-<<<<<<< HEAD
-          {/* Density Info Window */}
-=======
-          {/* Density Info Window (Updated) */}
->>>>>>> e2eda12 (test)
-          {clickedDensityInfo && (
-            <InfoWindowF
-              position={clickedDensityInfo.position}
-<<<<<<< HEAD
-              onCloseClick={() => setClickedDensityInfo(null)} // Hide on close
-            >
-              <div>
-                <h4>Population Density</h4>
-                <p>{clickedDensityInfo.density.toLocaleString()} people / km² (demo)</p>
-=======
-              onCloseClick={() => setClickedDensityInfo(null)}
-              >
-              {/* Display Name and Density */}
-              <div>
-                  <h4>{clickedDensityInfo.name}</h4>
-                  <p>Density: {clickedDensityInfo.density.toFixed(1)} p/km²</p>
->>>>>>> e2eda12 (test)
-              </div>
-            </InfoWindowF>
-          )}
-
-          {/* Data Layer is managed via map instance, not as a child component */}
 
           <></>
         </GoogleMap>

@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useCallback } from 'react';
 import {
   Grid,
   Card,
@@ -16,17 +17,42 @@ import { GoogleMapCard } from './GoogleMapCard';
 import { SettingsCard } from './SettingsCard';
 
 export function View1() {
+  // State for layer visibility
+  const [showSchools, setShowSchools] = useState(true);
+  const [showDensity, setShowDensity] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
+  // Handlers to toggle visibility
+  const toggleSchools = useCallback(() => setShowSchools((v) => !v), []);
+  const toggleDensity = useCallback(() => setShowDensity((v) => !v), []);
+  const toggleHeatmap = useCallback(() => {
+    setShowHeatmap((v) => {
+      console.log('View1: Toggling heatmap visibility. New value should be:', !v);
+      return !v;
+    });
+  }, []);
+
   return (
     <Grid gutter="md">
       {/* Left Column (2/3) */}
       <Grid.Col span={8}>
         <Stack gap="md">
           {/* Use the GoogleMapCard component */}
-          <GoogleMapCard />
-
+          <GoogleMapCard
+            showSchools={showSchools}
+            showDensity={showDensity}
+            showHeatmap={showHeatmap}
+          />
 
           {/* Use the SettingsCard component */}
-          <SettingsCard />
+          <SettingsCard
+            showSchools={showSchools}
+            showDensity={showDensity}
+            showHeatmap={showHeatmap}
+            onToggleSchools={toggleSchools}
+            onToggleDensity={toggleDensity}
+            onToggleHeatmap={toggleHeatmap}
+          />
         </Stack>
       </Grid.Col>
 
