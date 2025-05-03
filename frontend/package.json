@@ -13,6 +13,7 @@
     "@mantine/core": "^7.17.7",
     "@mantine/hooks": "^7.17.7",
     "@react-google-maps/api": "^2.20.6",
+    "@tabler/icons-react": "^3.31.0",
     "@types/mongodb": "^4.0.6",
     "date-fns": "^4.1.0",
     "mapbox-gl": "^3.11.1",
