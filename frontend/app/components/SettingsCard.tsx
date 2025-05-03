@@ -4,50 +4,90 @@ import {
   Card,
   Stack,
   Title,
-  Switch,
-  Group
+  Button,
+  Group,
+  Divider,
+  rem
 } from '@mantine/core';
+import {
+  IconChartHistogram,
+  IconFlame,
+  IconBuildingBridge,
+  IconRoad,
+  IconDroplet
+} from '@tabler/icons-react';
 
 // Define props interface
 interface SettingsCardProps {
-  showSchools: boolean;
   showDensity: boolean;
   showHeatmap: boolean;
-  onToggleSchools: () => void;
+  showInfrastructurePins: boolean;
+  showRoadClosures: boolean;
+  showReservoirHeatmap: boolean;
   onToggleDensity: () => void;
   onToggleHeatmap: () => void;
+  onToggleInfrastructurePins: () => void;
+  onToggleRoadClosures: () => void;
+  onToggleReservoirHeatmap: () => void;
 }
 
 export function SettingsCard({
-  showSchools,
   showDensity,
   showHeatmap,
-  onToggleSchools,
+  showInfrastructurePins,
+  showRoadClosures,
+  showReservoirHeatmap,
   onToggleDensity,
-  onToggleHeatmap
+  onToggleHeatmap,
+  onToggleInfrastructurePins,
+  onToggleRoadClosures,
+  onToggleReservoirHeatmap
 }: SettingsCardProps) {
   return (
-    <Card padding="lg" radius="lg" bg="gray.3">
+    <Card shadow="sm" padding="lg" radius="md">
       <Stack>
-        <Title order={4}>Map Layers</Title>
-        <Switch
-          label="Show Schools"
-          checked={showSchools}
-          onChange={onToggleSchools}
-          color="yellow"
-        />
-        <Switch
-          label="Show Population Density"
-          checked={showDensity}
-          onChange={onToggleDensity}
-          color="yellow"
-        />
-        <Switch
-          label="Show Heatmap"
-          checked={showHeatmap}
-          onChange={onToggleHeatmap}
-          color="yellow"
-        />
+        <Group grow>
+          <Button
+            leftSection={<IconChartHistogram size={16} />}
+            variant={showDensity ? 'light' : 'default'}
+            onClick={onToggleDensity}
+            color="gray"
+          >
+            Density
+          </Button>
+          <Button
+            leftSection={<IconFlame size={16} />}
+            variant={showHeatmap ? 'light' : 'default'}
+            onClick={onToggleHeatmap}
+            color="gray"
+          >
+            Heatmap
+          </Button>
+          <Button
+            leftSection={<IconBuildingBridge size={16} />}
+            variant={showInfrastructurePins ? 'light' : 'default'}
+            onClick={onToggleInfrastructurePins}
+            color="gray"
+          >
+            Infra
+          </Button>
+          <Button
+            leftSection={<IconRoad size={16} />}
+            variant={showRoadClosures ? 'light' : 'default'}
+            onClick={onToggleRoadClosures}
+            color="gray"
+          >
+            Roads
+          </Button>
+          <Button
+            leftSection={<IconDroplet size={16} />}
+            variant={showReservoirHeatmap ? 'light' : 'default'}
+            onClick={onToggleReservoirHeatmap}
+            color="gray"
+          >
+            Reservoir
+          </Button>
+        </Group>
       </Stack>
     </Card>
   );

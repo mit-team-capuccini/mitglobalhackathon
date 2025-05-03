@@ -109,4 +109,31 @@ export const fetchNearbySchools = async (
 ): Promise<School[]> => {
     console.log('mapDataService: Returning MOCK school data.');
     return Promise.resolve(mockSchoolData);
+};
+
+// --- Define Summary Info Interface ---
+export interface MunicipalitySummary {
+    municipal: string;
+    population: number;
+    population_density: number;
+}
+
+// --- Mock Valencia Summary Data ---
+// TODO: Replace with actual API call for summary data
+const mockValenciaSummary: MunicipalitySummary = {
+    municipal: "Valencia",
+    population: 791413, // Approx population from 2017 Padrón data
+    population_density: 5851.5 // Calculated from Padrón data (Pop / Area in km²)
+};
+
+// --- Function to get Valencia Summary ---
+export const getMunicipalitySummary = async (municipalityName: string): Promise<MunicipalitySummary | null> => {
+    console.log(`mapDataService: Getting summary for ${municipalityName}`);
+    // Simulate API call - currently only returns Valencia data
+    if (municipalityName.toLowerCase() === 'valencia') {
+        return Promise.resolve(mockValenciaSummary);
+    }
+    // In a real scenario, fetch data based on municipalityName
+    console.warn(`mapDataService: No summary data available for ${municipalityName}, returning null.`);
+    return Promise.resolve(null);
 }; 

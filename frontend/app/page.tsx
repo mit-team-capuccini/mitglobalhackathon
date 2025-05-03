@@ -1,51 +1,101 @@
 'use client';
 
 import {
-  AppShell,
-  Tabs,
   Container,
+  Title,
+  Stack,
+  Card,
+  Text,
+  Badge,
+  Group,
+  Anchor,
+  useMantineTheme,
 } from '@mantine/core';
-// Remove imports that are now in View1.tsx
-// Keep AppShell, Tabs, Container
+import Link from 'next/link'; // Import NextLink for client-side navigation
 
-// Import the new view components
-import { View1 } from './components/View1';
-import { View2 } from './components/View2';
-import { View3 } from './components/View3';
+// Mock data for disasters
+const disasters = [
+  {
+    id: 'valencia-flood-1',
+    title: 'Flooding in Valencia',
+    location: 'Valencia, Spain',
+    severity: 'High',
+    link: '/valencia', // Link specific to this event
+    description: 'Recent heavy rainfall has caused significant flooding in several districts...'
+  },
+  {
+    id: 'california-fire-1',
+    title: 'Wildfire near Los Angeles',
+    location: 'California, USA',
+    severity: 'Medium',
+    description: 'A wildfire continues to burn north of the city, containment efforts underway...'
+  },
+  {
+    id: 'japan-quake-1',
+    title: 'Earthquake Reported',
+    location: 'Offshore, Japan',
+    severity: 'Low',
+    description: 'Minor earthquake detected offshore, no tsunami warning issued...'
+  },
+  {
+    id: 'italy-heatwave-1',
+    title: 'Heatwave Advisory',
+    location: 'Southern Italy',
+    severity: 'Medium',
+    description: 'Extreme temperatures expected to continue through the week...'
+  },
+];
+
+// Helper function to get badge color based on severity
+const getSeverityColor = (severity: string) => {
+  switch (severity.toLowerCase()) {
+    case 'high': return 'red';
+    case 'medium': return 'orange';
+    case 'low': return 'green';
+    default: return 'gray';
+  }
+};
 
 export default function HomePage() {
+  const theme = useMantineTheme();
+
   return (
-    // Wrap AppShell with Tabs
-    <Tabs defaultValue="view1">
-      <AppShell header={{ height: 60 }} padding="md" px="md">
-        <AppShell.Header>
-          <Container fluid h="100%">
-            {/* Tabs.List remains here, but the parent Tabs is now outside AppShell */}
-            <Tabs.List grow h="100%">
-              <Tabs.Tab value="view1">View 1</Tabs.Tab>
-              <Tabs.Tab value="view2">View 2</Tabs.Tab>
-              <Tabs.Tab value="view3">View 3</Tabs.Tab>
-            </Tabs.List>
-            {/* Remove the Tabs component that was here */}
-          </Container>
-        </AppShell.Header>
+    <Container size="lg" my="xl">
+      <Title order={1} ta="center" mb="xl">
+        Event Monitoring
+      </Title>
 
-        <AppShell.Main>
-          {/* Panels are direct children of the main Tabs component */}
-          <Tabs.Panel value="view1" pt="md">
-            <View1 />
-          </Tabs.Panel>
+      <Stack gap="lg">
+        {disasters.map((disaster) => {
+          const cardContent = (
+            <Card shadow="sm" padding="lg" radius="md" withBorder>
+              <Group justify="space-between" mb="xs">
+                <Title order={3}>{disaster.title}</Title>
+                <Badge color={getSeverityColor(disaster.severity)} variant="light">
+                  {disaster.severity} Severity
+                </Badge>
+              </Group>
 
-          <Tabs.Panel value="view2" pt="md">
-            <View2 />
-          </Tabs.Panel>
+              <Text size="sm" c="dimmed" mb="md">
+                {disaster.location}
+              </Text>
 
-          <Tabs.Panel value="view3" pt="md">
-            <View3 />
-          </Tabs.Panel>
-          {/* Remove the Tabs component that was here */}
-        </AppShell.Main>
-      </AppShell>
-    </Tabs>
+              <Text size="sm">{disaster.description}</Text>
+            </Card>
+          );
+
+          // Wrap with Link only if a link is provided
+          return disaster.link ? (
+            <Link href={disaster.link} key={disaster.id} passHref legacyBehavior>
+              <Anchor component="a" style={{ textDecoration: 'none' }}>
+                 {cardContent}
+              </Anchor>
+            </Link>
+          ) : (
+            <div key={disaster.id}>{cardContent}</div>
+          );
+        })}
+      </Stack>
+    </Container>
   );
 }
