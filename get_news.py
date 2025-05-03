@@ -122,7 +122,7 @@ def analyze_article_with_chatgpt(article, client):
 
 def save_to_mongodb(articles, query, start_date, end_date):
     # MongoDB connection string
-    mongo_uri = os.getenv('MONGODB_URI', 'mongodb+srv://ncampana:HKjOOUBQiUJCF2ox@cluster0.m2ha5ti.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+    mongo_uri = os.getenv('MONGODB_URI')
     
     try:
         # Connect to MongoDB

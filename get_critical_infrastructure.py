@@ -104,7 +104,7 @@ def get_critical_buildings(api_key, location, radius=1000):
 
 def save_to_mongodb(places, location, radius, municipality_name):
     # MongoDB connection string - replace with your actual connection string
-    mongo_uri = os.getenv('MONGODB_URI', 'mongodb+srv://ncampana:HKjOOUBQiUJCF2ox@cluster0.m2ha5ti.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+    mongo_uri = os.getenv('MONGODB_URI')
     
     try:
         # Connect to MongoDB
