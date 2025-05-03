@@ -43,8 +43,7 @@ import { SettingsCard } from './SettingsCard';
 // Import service function and types
 import {
   getMunicipalitySummary,
-  MunicipalitySummary,
-  getDemoHeatmapData
+  MunicipalitySummary
 } from '../services/mapDataService';
 
 // Import types used in GoogleMapCard
@@ -153,8 +152,6 @@ export function View1() {
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [articlesError, setArticlesError] = useState<string | null>(null);
   const [socialMediaPostsData, setSocialMediaPostsData] = useState<SocialMediaPost[]>([]);
-  const [socialMediaLoading, setSocialMediaLoading] = useState(false);
-  const [socialMediaError, setSocialMediaError] = useState<string | null>(null);
 
   // --- Static/Mock Data State --- 
   const polygonData: GeoJsonFeature[] = [];
@@ -276,8 +273,6 @@ export function View1() {
   // Fetch Social Media Posts
   useEffect(() => {
     const fetchPosts = async () => {
-      setSocialMediaLoading(true);
-      setSocialMediaError(null);
       try {
         const response = await fetch('/api/social-media-posts');
         if (!response.ok) {
@@ -288,9 +283,6 @@ export function View1() {
         setSocialMediaPostsData(data);
       } catch (err) {
         console.error("Fetch social media error in View1:", err);
-        setSocialMediaError(err instanceof Error ? err.message : 'Failed to load social media posts');
-      } finally {
-        setSocialMediaLoading(false);
       }
     };
     fetchPosts();
@@ -391,7 +383,6 @@ export function View1() {
             socialMediaPosts={socialMediaPostsData}
             center={mapCenter}
             zoom={mapZoom}
-            polygonData={polygonData}
             infrastructurePlaces={infrastructurePlaces}
             infraLoading={infraLoading}
             infraError={infraError}
@@ -403,7 +394,6 @@ export function View1() {
             reservoirError={reservoirError}
             onBoundsChanged={handleBoundsChanged}
             onMapClick={handleMapClick}
-            selectedMunicipality={selectedMunicipality}
           />
           <SettingsCard
             showDensity={showDensity}

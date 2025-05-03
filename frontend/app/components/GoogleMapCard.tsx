@@ -19,9 +19,9 @@ import {
 // Correct imports from service
 import { getDemoHeatmapData } from '../services/mapDataService';
 
-// Placeholder/Basic types for missing imports
-type GeoJsonFeature = google.maps.Data.Feature; 
-type MapDataPoint = { lat: number; lng: number; weight?: number }; 
+// Removed unused GeoJsonFeature type
+// type GeoJsonFeature = google.maps.Data.Feature; 
+type MapDataPoint = { lat: number; lng: number; weight?: number };
 
 // START: Define Social Media Post Type (matching View1 fetch)
 interface SocialMediaPost {
