@@ -62,6 +62,7 @@ const heatmapOptions = {
   dissipating: true, // Set dissipating to true
 };
 
+<<<<<<< HEAD
 // Define type for School results (simplified)
 interface School {
   place_id: string;
@@ -71,6 +72,15 @@ interface School {
   };
   vicinity: string; // Address snippet
 }
+=======
+// --- Constants for property names (Adjust if needed based on data) ---
+const POPULATION_PROPERTY = 'PAD_2C02'; // Assumed total population property
+const AREA_PROPERTY = 'Shape__Area'; // Area property (assumed sq meters)
+const NAME_PROPERTY = 'Texto'; // Municipality name property
+
+// --- GeoJSON File Path (in /public directory) ---
+const GEOJSON_URL = '/CensusSpain.geojson'; // Corrected filename
+>>>>>>> e2eda12 (test)
 
 // Type for storing clicked polygon info
 interface ClickedDensityInfo {
@@ -315,15 +325,28 @@ export function GoogleMapCard() {
             </InfoWindowF>
           )}
 
+<<<<<<< HEAD
           {/* Density Info Window */}
+=======
+          {/* Density Info Window (Updated) */}
+>>>>>>> e2eda12 (test)
           {clickedDensityInfo && (
             <InfoWindowF
               position={clickedDensityInfo.position}
+<<<<<<< HEAD
               onCloseClick={() => setClickedDensityInfo(null)} // Hide on close
             >
               <div>
                 <h4>Population Density</h4>
                 <p>{clickedDensityInfo.density.toLocaleString()} people / km² (demo)</p>
+=======
+              onCloseClick={() => setClickedDensityInfo(null)}
+              >
+              {/* Display Name and Density */}
+              <div>
+                  <h4>{clickedDensityInfo.name}</h4>
+                  <p>Density: {clickedDensityInfo.density.toFixed(1)} p/km²</p>
+>>>>>>> e2eda12 (test)
               </div>
             </InfoWindowF>
           )}
