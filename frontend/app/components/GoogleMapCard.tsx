@@ -11,7 +11,7 @@ import {
   ThemeIcon,
   Image
 } from '@mantine/core';
-import { GoogleMap, useJsApiLoader, HeatmapLayer, MarkerF, InfoWindowF, PolygonF, OverlayView } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, HeatmapLayer, MarkerF, InfoWindowF, OverlayView } from '@react-google-maps/api';
 import {
   IconMessageCircle
 } from '@tabler/icons-react';
@@ -219,7 +219,6 @@ interface GoogleMapCardProps {
   center: google.maps.LatLngLiteral;
   zoom: number;
   // heatmapData: MapData; // Removed unused prop (using demo data)
-  polygonData: GeoJsonFeature[];
   infrastructurePlaces: InfrastructurePlace[];
   roadClosures: RoadClosure[];
   reservoirLevels: ReservoirLevel[];
@@ -230,17 +229,8 @@ interface GoogleMapCardProps {
   reservoirLoading: boolean;
   reservoirError: string | null;
   socialMediaPosts: SocialMediaPost[];
-  onBoundsChanged: (bounds: {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-    centerLat: number;
-    centerLng: number;
-    zoom: number;
-  }) => void;
+  onBoundsChanged: (bounds: google.maps.LatLngBounds | null) => void;
   onMapClick: (point: { lat: number; lng: number }) => void;
-  selectedMunicipality: GeoJsonFeature | null;
 }
 
 // interface MapCoordinates { // Removed unused type
@@ -259,7 +249,6 @@ export function GoogleMapCard({
   center,
   zoom,
   // heatmapData, // Removed unused prop
-  polygonData,
   infrastructurePlaces,
   roadClosures,
   reservoirLevels,
@@ -271,18 +260,17 @@ export function GoogleMapCard({
   reservoirError,
   socialMediaPosts,
   onBoundsChanged,
-  onMapClick,
-  selectedMunicipality
+  onMapClick
 }: GoogleMapCardProps) {
   // State for map instance
   const [map, setMap] = useState<google.maps.Map | null>(null);
   // State for clicked polygon info - Removed unused state
   // const [clickedDensityInfo, setClickedDensityInfo] = useState<ClickedDensityInfo | null>(null);
   
-  // State for selected items remains 
-  const [selectedRoadClosure, setSelectedRoadClosure] = useState<RoadClosure | null>(null);
-  const [selectedReservoir, setSelectedReservoir] = useState<ReservoirLevel | null>(null);
-  const [selectedInfraPlace, setSelectedInfraPlace] = useState<InfrastructurePlace | null>(null);
+  // Removed individual selection states
+  // const [selectedRoadClosure, setSelectedRoadClosure] = useState<RoadClosure | null>(null);
+  // const [selectedReservoir, setSelectedReservoir] = useState<ReservoirLevel | null>(null);
+  // const [selectedInfraPlace, setSelectedInfraPlace] = useState<InfrastructurePlace | null>(null);
   // Unified InfoWindow State
   const [selectedMarker, setSelectedMarker] = useState<InfrastructurePlace | RoadClosure | ReservoirLevel | SocialMediaPost | null>(null);
   const [markerType, setMarkerType] = useState<'infra' | 'road' | 'reservoir' | 'social' | null>(null);
@@ -419,18 +407,7 @@ export function GoogleMapCard({
   const handleBoundsChanged = () => {
     if (map && onBoundsChanged) {
       const bounds = map.getBounds();
-      const center = map.getCenter();
-      if (bounds && center) {
-        onBoundsChanged({
-          north: bounds.getNorthEast().lat(),
-          south: bounds.getSouthWest().lat(),
-          east: bounds.getNorthEast().lng(),
-          west: bounds.getSouthWest().lng(),
-          centerLat: center.lat(),
-          centerLng: center.lng(),
-          zoom: map.getZoom() ?? zoom, // Use current zoom or default
-        });
-      }
+      onBoundsChanged(bounds || null);
     }
   };
 
@@ -500,9 +477,9 @@ export function GoogleMapCard({
     setSelectedMarker(marker);
     setMarkerType(type);
     // Clear other selections if needed (optional)
-    setSelectedInfraPlace(null);
-    setSelectedRoadClosure(null);
-    setSelectedReservoir(null);
+    // setSelectedInfraPlace(null);
+    // setSelectedRoadClosure(null);
+    // setSelectedReservoir(null);
   };
 
   // --- InfoWindow Close Handler ---
@@ -510,9 +487,9 @@ export function GoogleMapCard({
     setSelectedMarker(null);
     setMarkerType(null);
     // Also clear individual selections
-    setSelectedInfraPlace(null);
-    setSelectedRoadClosure(null);
-    setSelectedReservoir(null);
+    // setSelectedInfraPlace(null);
+    // setSelectedRoadClosure(null);
+    // setSelectedReservoir(null);
   };
 
   if (loadError) {

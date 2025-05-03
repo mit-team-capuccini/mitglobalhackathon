@@ -10,30 +10,23 @@ import {
   Loader,
   Alert,
   Group,
-  Avatar,
   Image,
   Badge,
   ThemeIcon,
   ActionIcon,
   rem,
   Paper,
-  Center,
-  Anchor
+  Center
 } from '@mantine/core';
 import {
   IconAlertCircle,
   IconBrandTwitter,
   IconBrandFacebook,
-  IconPhoto,
-  IconThumbUp,
-  IconThumbDown,
   IconMapPin,
-  IconCalendarEvent,
   IconCheck,
   IconTags,
   IconMessage,
-  IconMoodSmile,
-  IconArticle
+  IconMoodSmile
 } from '@tabler/icons-react';
 import { formatDistanceToNow } from 'date-fns';
 

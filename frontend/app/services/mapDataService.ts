@@ -135,8 +135,8 @@ const mockSchoolData: School[] = [
 
 // --- School Data Fetching (Exported, returns mock data) ---
 export const fetchNearbySchools = async (
-    _service?: google.maps.places.PlacesService,
-    _request?: google.maps.places.PlaceSearchRequest
+    // _service?: google.maps.places.PlacesService, // Removed unused
+    // _request?: google.maps.places.PlaceSearchRequest // Removed unused
 ): Promise<School[]> => {
     console.log('mapDataService: Returning MOCK school data.');
     return Promise.resolve(mockSchoolData);

@@ -47,7 +47,7 @@ import {
   getDemoHeatmapData
 } from '../services/mapDataService';
 
-// Import types used in GoogleMapCard (now needed here)
+// Import types used in GoogleMapCard
 import type { InfrastructurePlace, RoadClosure, ReservoirLevel } from './GoogleMapCard';
 
 // Import Social Media Post Type (same as in View3)
@@ -84,9 +84,9 @@ interface SocialMediaPost {
   };
 }
 
-// Placeholder types - adjust if you have proper types
-type GeoJsonFeature = any;
-type MapData = any;
+// Placeholder types
+type GeoJsonFeature = any; // Using any for now, refine if possible
+// type MapData = any; // Removed, heatmapData state removed
 
 // Mock Data for Charts
 const mockReservoirTrendData = [
@@ -157,7 +157,6 @@ export function View1() {
   const [socialMediaError, setSocialMediaError] = useState<string | null>(null);
 
   // --- Static/Mock Data State --- 
-  const [heatmapData, setHeatmapData] = useState<MapData>([]);
   const polygonData: GeoJsonFeature[] = [];
   const [mockTouristEstimate] = useState(15000);
   const [mockInfraStatus] = useState("Partially Degraded");
@@ -188,10 +187,10 @@ export function View1() {
   const toggleBrokenBuilding = useCallback(() => setShowBrokenBuilding((v) => !v), []);
   const toggleSocialMediaPins = useCallback(() => setShowSocialMediaPins((v) => !v), []);
 
-  // --- Map Interaction Handlers --- 
-  const handleBoundsChanged = useCallback((bounds: google.maps.LatLngBoundsLiteral | null ) => {
+  // --- Map Interaction Handlers (Refined types) --- 
+  const handleBoundsChanged = useCallback((bounds: google.maps.LatLngBounds | null ) => {
     if (!bounds) return;
-    console.log('Bounds changed:', bounds);
+    console.log('Bounds changed:', bounds.toJSON());
   }, []);
 
   const handleMapClick = useCallback((point: { lat: number; lng: number }) => {
@@ -215,7 +214,7 @@ export function View1() {
     };
     fetchSummary();
     // Fetch static heatmap data (example)
-    setHeatmapData(getDemoHeatmapData());
+    // setHeatmapData(getDemoHeatmapData());
   }, []);
 
   // Fetch Infrastructure Places
